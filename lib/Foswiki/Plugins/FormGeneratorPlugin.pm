@@ -302,7 +302,9 @@ sub _generate {
             my $rulePrio = $ruleMeta->getPreference('FormGenerator_Priority') || 0;
             my $ruleOrder = $ruleMeta->getPreference('FormGenerator_Order') || 0;
 
+            Foswiki::Func::pushTopicContext($ruleWeb, $ruleTopic);
             $rule = $ruleMeta->expandMacros($rule);
+            Foswiki::Func::popTopicContext();
             $rule =~ s#\@DELAY#\%#g;
             $rule =~ s#\@NOP##g;
 
