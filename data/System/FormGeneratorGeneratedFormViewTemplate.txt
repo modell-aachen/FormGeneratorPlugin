@@ -1,0 +1,7 @@
+%TMPL:INCLUDE{"SystemView"}%
+
+%TMPL:DEF{"content"}%%TEXT%
+
+%MAKETEXT{"Generators for this form:"}%
+%FORMATLIST{"%FORMGENERATORS{"%FormGenerator_Group%" form="%BASEWEB%.%BASETOPIC%"}%" format="   * [[$1]]" separator="$n"}%
+%TMPL:END%
