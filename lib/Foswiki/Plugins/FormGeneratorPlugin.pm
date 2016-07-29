@@ -363,6 +363,7 @@ sub _generate {
         my $formText = '| ' . join(' | ', map { "*$_*" } @{$formData->{collectedHeaders}}) . " |\n";
 
         foreach my $field ( _prioritizedUnique($formData->{collectedFields}) ) {
+            next if $field->[4]{type} eq '@REMOVE';
             my @outputFields;
             for my $header (@{$formData->{collectedHeaders}}) {
                 my $value = $field->[4]{$header};
@@ -377,6 +378,7 @@ sub _generate {
         if (scalar @{$formData->{collectedPrefs}}) {
             $formText .= "\n";
             for my $pref ( sort { $a->[3] cmp $b->[3] } _prioritizedUnique($formData->{collectedPrefs}) ) {
+                next if $pref->[4] eq '@REMOVE';
                 $formText .= "   * Set $pref->[3] = $pref->[4]\n";
             }
         }
