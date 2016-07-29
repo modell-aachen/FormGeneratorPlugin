@@ -399,10 +399,19 @@ sub _generate {
     }
 }
 
-# Sort array with hashes by position, respecting priority and remove duplicates
+# Sort array with arrayrefs by position, respecting priority and remove duplicates
 #    * duplicate with highest priority wins.
 #    * lower position means lower index in array
-#    TODO
+#    * a string will be used as tie-breaker
+#    * all other things equal, the original ordering will be preserved
+#    * each entry has the following structure
+#       [ $priority, $name(tie-breaker), $order, $yourData, $yourOtherData ]
+#
+# Parameters:
+#    * in (ARRAY of HASHREFs): array to be sorted
+#
+# Returns:
+#    * sorted array
 sub _prioritizedUnique {
     my ($in) = @_;
     my (@values, @result);
