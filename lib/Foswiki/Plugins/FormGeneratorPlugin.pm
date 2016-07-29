@@ -279,6 +279,9 @@ sub _getRulesByGroup {
 sub _generate {
     my ($groups) = @_;
 
+    # make sure we can read all topics (eg. for %SEARCH{...}%)
+    local $Foswiki::Plugins::SESSION->{user} = 'BaseUserMapping_333';
+
     my %groupdata;
 
     my $affectedForms = _getFormsByGroup($groups);
