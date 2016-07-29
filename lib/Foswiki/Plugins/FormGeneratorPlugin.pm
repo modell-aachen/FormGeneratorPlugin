@@ -306,8 +306,8 @@ sub _generate {
             $rule = $ruleMeta->expandMacros($rule);
             Foswiki::Func::popTopicContext();
             $rule =~ s#\@DELAY#\%#g;
-            $rule =~ s#\@NOP##g;
             $rule =~ s#\@QUOT#"#g;
+            $rule =~ s#\@NOP##g;
 
             my ($columns, $fields, $prefs) = _parseFormDefinition($rule);
             while (my ($k, $v) = each(%$prefs)) {
