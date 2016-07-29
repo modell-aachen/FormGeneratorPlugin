@@ -66,6 +66,11 @@ There are some special escapes, do make life easier when using the expand macro.
 | =@QUOT= | ="= | =$quot= |
 | =@NOP= | _will be removed_ | =&lt;nop&gt;= |
 
+---+++ AppManagerPlugin
+
+After you have installed an app via AppManagerPlugin, you must manually index all generators. Use this link:
+[[%SCRIPTURL{rest}%/FormGeneratorPlugin/index][index (as admin user)]]
+
 ---+++ Configure
 
 If you want to use =ExpandMacros= in generators outside of your [[%SYSTEMWEB%.%HOMETOPIC%][%SYSTEMWEB%]] web, you will need to add them to ={Extensions}{FormGeneratorPlugin}{allowExpand}=.
