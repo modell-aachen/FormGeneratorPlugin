@@ -166,7 +166,7 @@ sub _onChange {
         }
     } elsif ($newTopic =~ /^FormGenerator_/) {
         $groups{$newMeta->getPreference('FormGenerator_TargetFormGroup')} = 1;
-    } elsif ($newTopic =~ /^(.*)ExtraFields\d+$/) {
+    } elsif ($newTopic =~ /^(.*Form)ExtraFields\d+$/) {
         my $form = $1;
         if (Foswiki::Func::topicExists($newWeb, $form)) {
             ($form) = Foswiki::Func::readTopic($newWeb, $form);
