@@ -283,6 +283,8 @@ sub _generate {
 
     my $affectedForms = _getFormsByGroup($groups);
 
+    my $errors = '';
+
     # read in fields
     foreach my $group ( @$groups ) {
         my $grp = {
@@ -302,9 +304,17 @@ sub _generate {
             my $rulePrio = $ruleMeta->getPreference('FormGenerator_Priority') || 0;
             my $ruleOrder = $ruleMeta->getPreference('FormGenerator_Order') || 0;
 
-            Foswiki::Func::pushTopicContext($ruleWeb, $ruleTopic);
-            $rule = $ruleMeta->expandMacros($rule);
-            Foswiki::Func::popTopicContext();
+            if($ruleMeta->getPreference('FormGenerator_ExpandMacros')) {
+                my $ruleWebTopic = "$ruleWeb/$ruleTopic";
+                if($ruleWeb eq $Foswiki::cfg{SystemWebName} || grep { $_ eq $ruleWebTopic } @{$Foswiki::cfg{Extensions}{FormGeneratorPlugin}{allowExpand}}) {
+                    Foswiki::Func::pushTopicContext($ruleWeb, $ruleTopic);
+                    $rule = $ruleMeta->expandMacros($rule);
+                    Foswiki::Func::popTopicContext();
+                } else {
+                    $errors .= '%MAKETEXT{"Not allowed to expand [_1]!" args="'.$ruleWebTopic.'"}%'."\n\n";
+                    $rule = '';
+                }
+            }
             $rule =~ s#\@DELAY#\%#g;
             $rule =~ s#\@QUOT#"#g;
             $rule =~ s#\@NOP##g;
@@ -373,6 +383,8 @@ sub _generate {
 
         # footer/view-template
         $formText .= "\n\n".'%RED%%MAKETEXT{"This form has been created by FormGeneratorPlugin, <b>do not modify</b>!"}%%ENDCOLOR%';
+
+        $formText .= "\n\n\%RED\%<b>ERRORS:</b>\n\n$errors\%ENDCOLOR\%" if $errors;
         $formText .= "\n<!--\n   * Local VIEW_TEMPLATE = FormGeneratorGeneratedFormView\n-->\n";
 
         if($oldText ne $formText) {
