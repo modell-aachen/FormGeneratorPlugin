@@ -69,6 +69,8 @@ sub restIndex {
 
     my $db = db();
 
+    my $groups = {};
+
     # get stuff
 
     my ($forms, $rules);
@@ -143,10 +145,18 @@ SEARCH
 
     foreach my $form ( @{$forms->{response}->{docs}} ) {
         $db->do("INSERT OR REPLACE into forms (webtopic, FormGroup) values (?, ?)", {}, $form->{webtopic}, $form->{preference_FormGenerator_Group_s});
+        $groups->{$form->{preference_FormGenerator_Group_s}} = 1;
     }
 
     foreach my $rule ( @{$rules->{response}->{docs}} ) {
        $db->do("INSERT OR REPLACE into rules (webtopic, TargetFormGroup, SourceTopicForm) values (?, ?, ?)", {}, $rule->{webtopic}, $rule->{preference_FormGenerator_TargetFormGroup_s}, $rule->{preference_FormGenerator_SourceTopicForm_s});
+        $groups->{$rule->{preference_FormGenerator_TargetFormGroup_s}} = 1;
+    }
+
+    # generate
+    if($query->param('generate')) {
+        my @collectedGroups = keys %$groups;
+        _generate(\@collectedGroups);
     }
 
     # finished

@@ -69,8 +69,8 @@ There are some special escapes, do make life easier when using the expand macro.
 ---+++ AppManagerPlugin
 
 After you have installed an app via AppManagerPlugin, you must manually index all generators. Use any of these links:
-   * [[%SCRIPTURL{rest}%/FormGeneratorPlugin/index][index with solr (as admin user)]]
-   * [[%SCRIPTURL{rest}%/FormGeneratorPlugin/index?mode=nosolr][index without solr (as admin user)]]
+   * [[%SCRIPTURL{rest}%/FormGeneratorPlugin/index;generate=1][index and generate with solr (as admin user)]]
+   * [[%SCRIPTURL{rest}%/FormGeneratorPlugin/index?mode=nosolr;generate=1][index and generate without solr (as admin user)]]
 
 ---+++ Configure
 
