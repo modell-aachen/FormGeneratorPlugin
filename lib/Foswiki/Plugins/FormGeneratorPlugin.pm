@@ -453,6 +453,7 @@ sub _parseFormDefinition {
         push @fields, \%fieldHash;
     }
 
+    $prefs = '' unless defined $prefs;
     $prefs = { map { grep \&defined, @{[ m/^(?:   |\t)+\*\s*Set\s+(\w+)\s*=\s*(.*)$/ ]} } split(/\n/, $prefs) };
 
     (\@columns, \@fields, $prefs);
