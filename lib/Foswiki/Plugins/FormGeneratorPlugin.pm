@@ -158,7 +158,7 @@ sub _onChange {
 
     my %groups;
 
-    if (not $newTopic || $newTopic eq 'WebPreferences' || $newTopic eq 'SitePreferences') { # Note: One may create MyWeb.SitePreferences, however not worth the effort
+    if ((not $newTopic) || $newTopic eq 'WebPreferences' || $newTopic eq 'SitePreferences') { # Note: One may create MyWeb.SitePreferences, however not worth the effort
         my @allGroups = @{ db()->selectcol_arrayref("SELECT DISTINCT TargetFormGroup from rules") };
         foreach my $group (@allGroups) {
             next unless $group;
