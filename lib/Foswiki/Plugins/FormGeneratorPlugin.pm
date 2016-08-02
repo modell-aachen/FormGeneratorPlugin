@@ -67,17 +67,72 @@ sub restIndex {
 
     return 'NotAnAdmin' unless Foswiki::Func::isAnAdmin();
 
-    my $solr = Foswiki::Plugins::SolrPlugin->getSearcher();
-
     my $db = db();
 
     # get stuff
 
-    my $raw = $solr->solrSearch("topic:*Form preference_FormGenerator_Group_s:*", {rows => 9999, fl => "webtopic,preference_FormGenerator_Group_s"})->{raw_response};
-    my $forms = from_json($raw->{_content});
+    my ($forms, $rules);
+    my $query = Foswiki::Func::getCgiQuery();
+    my $mode = $query->param('mode');
+    if($mode && $mode eq 'nosolr') {
+        # We can not use solr, fallback to SEARCH
+        # If anyone knows how to extract preferences via SEARCH, please change this
 
-    $raw = $solr->solrSearch("topic:FormGenerator_* preference_FormGenerator_TargetFormGroup_s:*", {rows => 9999, fl => "webtopic,preference_FormGenerator_TargetFormGroup_s,preference_FormGenerator_SourceTopicForm_s"})->{raw_response};
-    my $rules = from_json($raw->{_content});
+        # forms
+        my @formsArray = split(',', Foswiki::Func::expandCommonVariables(<<'SEARCH'));
+%SEARCH{
+   "preferences.FormGenerator_Group.value"
+   topic="*Form"
+   web="all"
+   type="query"
+   nonoise="1"
+   format="$web.$topic"
+   separator=","
+}%
+SEARCH
+        $forms = { response => { docs => [] } };
+        foreach my $form ( @formsArray ) {
+            my ($web, $topic) = Foswiki::Func::normalizeWebTopicName(undef, $form);
+            my ($meta) = Foswiki::Func::readTopic($web, $topic);
+            my $doc = {
+                webtopic => "$web.$topic",
+                preference_FormGenerator_Group_s => $meta->getPreference('FormGenerator_Group')
+            };
+            push @{$forms->{response}->{docs}}, $doc;
+        }
+
+        # generators
+        my @rulesArray = split(',', Foswiki::Func::expandCommonVariables(<<'SEARCH'));
+%SEARCH{
+   "preferences.FormGenerator_TargetFormGroup.value"
+   topic="FormGenerator_*"
+   web="all"
+   type="query"
+   nonoise="1"
+   format="$web.$topic"
+   separator=","
+}%
+SEARCH
+        $rules = { response => { docs => [] } };
+        foreach my $rule ( @rulesArray ) {
+            my ($web, $topic) = Foswiki::Func::normalizeWebTopicName(undef, $rule);
+            my ($meta) = Foswiki::Func::readTopic($web, $topic);
+            my $doc = {
+                webtopic => "$web.$topic",
+                preference_FormGenerator_TargetFormGroup_s => $meta->getPreference('FormGenerator_TargetFormGroup'),
+                preference_FormGenerator_SourceTopicForm_s => $meta->getPreference('FormGenerator_SourceTopicForm')
+            };
+            push @{$rules->{response}->{docs}}, $doc;
+        }
+    } else {
+        my $solr = Foswiki::Plugins::SolrPlugin->getSearcher();
+
+        my $raw = $solr->solrSearch("topic:*Form preference_FormGenerator_Group_s:*", {rows => 9999, fl => "webtopic,preference_FormGenerator_Group_s"})->{raw_response};
+        $forms = from_json($raw->{_content});
+
+        $raw = $solr->solrSearch("topic:FormGenerator_* preference_FormGenerator_TargetFormGroup_s:*", {rows => 9999, fl => "webtopic,preference_FormGenerator_TargetFormGroup_s,preference_FormGenerator_SourceTopicForm_s"})->{raw_response};
+        $rules = from_json($raw->{_content});
+    }
 
     # clean old tables (make sure there are no leftovers from deleted topics)
 
