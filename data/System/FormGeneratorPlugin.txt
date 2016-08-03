@@ -20,11 +20,22 @@ Customization can be done by creating extra-rules in the target web.
 *NOTE:* You must not use Solr for generating the forms, since it's index is probably not up to date when the generation is taking place.
 
 ---+++ Form
+
+The form will be gernerated automatically. Old forms will not be overwritten; delete them and use the index link below, if you want them to be generated.
+
+---+++ !FormManagers
+
+!FormManagers tell the plugin which forms it should generate. They have the same name as the form but =Manager= appended, eg. =DocumentForm= will have the manager =DocumentFormManager=.
+
 Set the group by setting =FormGenerator_Group= as a _preference_ (do not put this into the =%<nop>TEXT%=).
 
 <pre>
    &#42; Set FormGenerator_Group = <i>MyGroup</i>
 </pre>
+
+You should also set the =VIEW_TEMPLATE= to =FormGeneratorManagerView=.
+
+If you do not want anyone to make changes to that manager (because it should be updatable), set =FormGenerator_AppControlled = 1= in the manager's preferences (again not in =TEXT=).
 
 ---+++ Generators
 

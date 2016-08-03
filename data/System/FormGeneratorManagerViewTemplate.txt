@@ -1,0 +1,9 @@
+%TMPL:INCLUDE{"SystemView"}%
+
+%TMPL:DEF{"content"}%%TEXT%
+
+%MAKETEXT{"This is the manager for [_1]. It acts on the group '[_2]'." args="[[%BASEWEB%.%SUBST{text="%BASETOPIC%" pattern="Manager$" format=""}%]],%FormGenerator_Group%"}%
+%IF{"META:PREFERENCE[name='FormGenerator_AppControlled'].value" then="
+
+%MAKETEXT{"This generator is part of an app, please do not modify!"}%"}%
+%TMPL:END%

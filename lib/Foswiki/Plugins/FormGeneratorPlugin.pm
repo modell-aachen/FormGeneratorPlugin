@@ -25,7 +25,7 @@ my @schema_updates = (
         # Basic relations
         "CREATE TABLE meta (type TEXT NOT NULL UNIQUE, version INT NOT NULL)",
         "INSERT INTO meta (type, version) VALUES('core', 0)",
-        "CREATE TABLE forms (
+        "CREATE TABLE formmanagers (
             webtopic TEXT NOT NULL UNIQUE,
             FormGroup TEXT NOT NULL
         )",
@@ -84,7 +84,7 @@ sub restIndex {
         my @formsArray = split(',', Foswiki::Func::expandCommonVariables(<<'SEARCH'));
 %SEARCH{
    "preferences.FormGenerator_Group.value"
-   topic="*Form"
+   topic="*FormManager"
    web="all"
    type="query"
    nonoise="1"
@@ -129,7 +129,7 @@ SEARCH
     } else {
         my $solr = Foswiki::Plugins::SolrPlugin->getSearcher();
 
-        my $raw = $solr->solrSearch("topic:*Form preference_FormGenerator_Group_s:*", {rows => 9999, fl => "webtopic,preference_FormGenerator_Group_s"})->{raw_response};
+        my $raw = $solr->solrSearch("topic:*FormManager preference_FormGenerator_Group_s:*", {rows => 9999, fl => "webtopic,preference_FormGenerator_Group_s"})->{raw_response};
         $forms = from_json($raw->{_content});
 
         $raw = $solr->solrSearch("topic:FormGenerator_* preference_FormGenerator_TargetFormGroup_s:*", {rows => 9999, fl => "webtopic,preference_FormGenerator_TargetFormGroup_s,preference_FormGenerator_SourceTopicForm_s"})->{raw_response};
@@ -139,12 +139,12 @@ SEARCH
     # clean old tables (make sure there are no leftovers from deleted topics)
 
     $db->do("DELETE from rules");
-    $db->do("DELETE from forms");
+    $db->do("DELETE from formmanagers");
 
     # insert new stuff
 
     foreach my $form ( @{$forms->{response}->{docs}} ) {
-        $db->do("INSERT OR REPLACE into forms (webtopic, FormGroup) values (?, ?)", {}, $form->{webtopic}, $form->{preference_FormGenerator_Group_s});
+        $db->do("INSERT OR REPLACE into formmanagers (webtopic, FormGroup) values (?, ?)", {}, $form->{webtopic}, $form->{preference_FormGenerator_Group_s});
         $groups->{$form->{preference_FormGenerator_Group_s}} = 1;
     }
 
@@ -209,14 +209,14 @@ sub _onChange {
             my $sourceForm = $newMeta->getPreference('FormGenerator_SourceTopicForm');
             $db->do("INSERT into rules (webtopic, TargetFormGroup, SourceTopicForm) values (?, ?, ?)", {}, "$newWeb.$newTopic", $formGroup, $sourceForm) if $formGroup;
         }
-    } elsif($oldTopic && $oldTopic =~ m#Form$#) {
-        $db->do("DELETE from forms WHERE webtopic=?", {}, "$oldWeb.$oldTopic");
-        if($newTopic =~ m#Form$#) {
+    } elsif($oldTopic && $oldTopic =~ m#FormManager$#) {
+        $db->do("DELETE from formmanagers WHERE webtopic=?", {}, "$oldWeb.$oldTopic");
+        if($newTopic =~ m#FormManager$#) {
             my $formGroup = $newMeta->getPreference('FormGenerator_Group');
-            $db->do("INSERT into forms (webtopic, FormGroup) values (?, ?)", {}, "$newWeb.$newTopic", $formGroup) if $formGroup;
+            $db->do("INSERT into formmanagers (webtopic, FormGroup) values (?, ?)", {}, "$newWeb.$newTopic", $formGroup) if $formGroup;
         }
     } elsif(not $oldTopic) {
-        $db->do("UPDATE forms SET webtopic=? || substr(webtopic,?) WHERE webtopic LIKE ?", {}, "$newWeb.", length($oldWeb)+1, "$oldWeb.\%");
+        $db->do("UPDATE formmanagers SET webtopic=? || substr(webtopic,?) WHERE webtopic LIKE ?", {}, "$newWeb.", length($oldWeb)+1, "$oldWeb.\%");
     }
 
     # Update forms
@@ -231,11 +231,13 @@ sub _onChange {
         }
     } elsif ($newTopic =~ /^FormGenerator_/) {
         $groups{$newMeta->getPreference('FormGenerator_TargetFormGroup')} = 1;
+    } elsif ($newTopic =~ /FormManager$/) {
+        $groups{$newMeta->getPreference('FormGenerator_Group')} = 1;
     } elsif ($newTopic =~ /^(.*Form)ExtraFields\d+$/) {
-        my $form = $1;
-        if (Foswiki::Func::topicExists($newWeb, $form)) {
-            ($form) = Foswiki::Func::readTopic($newWeb, $form);
-            my $target = $form->getPreference('FormGenerator_Group');
+        my $formManager = "$1Manager";
+        if (Foswiki::Func::topicExists($newWeb, $formManager)) {
+            ($formManager) = Foswiki::Func::readTopic($newWeb, $formManager);
+            my $target = $formManager->getPreference('FormGenerator_Group');
             $groups{$target} = 1 if $target;
         }
     } elsif ($newMeta) {
@@ -311,16 +313,28 @@ sub afterSaveHandler {
     _onChange($web, $topic, $web, $topic, $newMeta);
 }
 
-# Get all forms that are affected by a list of groups.
+# Get all managers indexed (ie outside Trash).
 #
 # Params:
 #    * groups (ARRAYREF): groups which affect forms
 #
 # Returns:
 #    * (ARRAYREF) of forms (webtopic)
-sub _getFormsByGroup {
+sub _getAllManagers {
+    my $query = "SELECT DISTINCT webtopic FROM formmanagers";
+    return db()->selectcol_arrayref($query, {});
+}
+
+# Get all managers that are affected by a list of groups.
+#
+# Params:
+#    * groups (ARRAYREF): groups which affect forms/managers
+#
+# Returns:
+#    * (ARRAYREF) of managers (webtopic)
+sub _getManagersByGroup {
     my ($groups) = @_;
-    my $query = "SELECT DISTINCT webtopic FROM forms WHERE FormGroup IN (". join(', ', map {'?'} @$groups) .")";
+    my $query = "SELECT DISTINCT webtopic FROM formmanagers WHERE FormGroup IN (". join(', ', map {'?'} @$groups) .")";
     return db()->selectcol_arrayref($query, {}, @$groups);
 }
 
@@ -349,7 +363,7 @@ sub _generate {
 
     my %groupdata;
 
-    my $affectedForms = _getFormsByGroup($groups);
+    my $affectedForms = _getManagersByGroup($groups);
 
     my $errors = '';
 
@@ -408,10 +422,24 @@ sub _generate {
 
     # build the actual form
 
-    foreach my $newFormWebTopic ( @$affectedForms ) {
-        my ($formMeta, $oldText) = Foswiki::Func::readTopic(Foswiki::Func::normalizeWebTopicName(undef, $newFormWebTopic));
-        my $customization = $formMeta->topic()."ExtraFields";
-        my $formData = $groupdata{$formMeta->getPreference('FormGenerator_Group')};
+    foreach my $formManagerWebTopic ( @$affectedForms ) {
+        my ($web, $formManagerTopic) = Foswiki::Func::normalizeWebTopicName(undef, $formManagerWebTopic);
+        my $formTopic = $formManagerTopic;
+        $formTopic =~ s#Manager$##;
+
+        my ($formMeta, $oldText) = Foswiki::Func::readTopic($web, $formTopic);
+
+        # do nothing if the form has not been autogenerated
+        if(Foswiki::Func::topicExists($web, $formTopic)) {
+            unless($formMeta->getPreference('FormGenerator_AUTOGENERATED')) {
+                Foswiki::Func::writeWarning("Manager for non-generated form: $web.$formManagerTopic");
+                next;
+            }
+        }
+
+        my ($formManagerMeta) = Foswiki::Func::readTopic($web, $formManagerTopic);
+        my $customization = $formTopic."ExtraFields";
+        my $formData = $groupdata{$formManagerMeta->getPreference('FormGenerator_Group')};
         my $extraIdx = 0;
         while (Foswiki::Func::topicExists($formMeta->web(), $customization . ++$extraIdx)) {
             $formData = _deepCopy($formData);
@@ -451,13 +479,16 @@ sub _generate {
             }
         }
 
-        # footer/view-template
+        # footer / view-template / mark as generated / ACLs
         $formText .= "\n\n".'%RED%%MAKETEXT{"This form has been created by FormGeneratorPlugin, <b>do not modify</b>!"}%%ENDCOLOR%';
-
         $formText .= "\n\n\%RED\%<b>ERRORS:</b>\n\n$errors\%ENDCOLOR\%" if $errors;
         $formText .= "\n<!--\n   * Local VIEW_TEMPLATE = FormGeneratorGeneratedFormView\n-->\n";
+        $formMeta->putKeyed('PREFERENCE', {type => 'Set', name => 'FormGenerator_AUTOGENERATED', title => 'FormGenerator_AUTOGENERATED' , value => 1} );
+        $formMeta->putKeyed('PREFERENCE', {type => 'Set', name => 'WORKFLOW', title => 'WORKFLOW' , value => ''} );
+        $formMeta->putKeyed('PREFERENCE', {type => 'Set', name => 'ALLOWTOPICCHANGE', title => 'ALLOWTOPICCHANGE' , value => 'AdminGroup'} );
+        $formMeta->putKeyed('PREFERENCE', {type => 'Set', name => 'DISPLAYCOMMENTS', title => 'DISPLAYCOMMENTS' , value => 'off'} );
 
-        if($oldText ne $formText) {
+        if($oldText ne $formText) { # TODO: we will not notice, when preferences changed, however this is unlikely to happen without text changes
             $formMeta->text($formText);
             $formMeta->save(dontlog => 1, minor => 1);
         }
@@ -524,6 +555,35 @@ sub _parseFormDefinition {
     (\@columns, \@fields, $prefs);
 }
 
+sub maintenanceHandler {
+    # TODO: check if there are unindexed managers
+    # TODO: check if there are managers without forms
+    Foswiki::Plugins::MaintenancePlugin::registerCheck("FormGeneratorPlugin:unmanagedForms", {
+        name => "Unmanaged forms with form managers",
+        description => "Check if there are managers for forms, that have not been generated by the plugin.",
+        check => sub {
+            my $managers = _getAllManagers();
+            my @forms = ();
+            foreach my $manager ( @$managers ) {
+                my ($web, $managerTopic) = Foswiki::Func::normalizeWebTopicName(undef, $manager);
+                my $formTopic = $managerTopic;
+                $formTopic =~ s#Manager$##;
+                next unless Foswiki::Func::topicExists($web, $formTopic);
+                my ($formMeta) = Foswiki::Func::readTopic($web, $formTopic);
+                push @forms, "$web.$formTopic" unless $formMeta->get('PREFERENCE', 'FormGenerator_AUTOGENERATED');
+            }
+            if(scalar @forms) {
+                return {
+                    result => 1,
+                    priority => $Foswiki::Plugins::MaintenancePlugin::WARN,
+                    solution => "Please put customizations from ".join(', ', map { "[[$_]]" } @forms)." into !ExtraFields and delete the old form."
+                }
+            } else {
+                return { result => 0 };
+            }
+        }
+    });
+}
 
 1;
 
