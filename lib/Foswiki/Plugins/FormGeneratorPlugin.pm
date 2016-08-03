@@ -72,6 +72,9 @@ sub restIndex {
     my $groups = {};
 
     # get stuff
+    # Note: %SEARCH% and %SOLRSEARCH% will not search webs starting with an
+    # underscore. Both should by default also not search Trash, but better save
+    # than sorry, since it can be configured otherwise.
 
     my ($forms, $rules);
     my $query = Foswiki::Func::getCgiQuery();
@@ -85,7 +88,7 @@ sub restIndex {
 %SEARCH{
    "preferences.FormGenerator_Group.value"
    topic="*FormManager"
-   web="all"
+   web="all,-%QUERY{"{TrashWebName}"}%"
    type="query"
    nonoise="1"
    format="$web.$topic"
@@ -108,7 +111,7 @@ SEARCH
 %SEARCH{
    "preferences.FormGenerator_TargetFormGroup.value"
    topic="FormGenerator_*"
-   web="all"
+   web="all,-%QUERY{"{TrashWebName}"}%"
    type="query"
    nonoise="1"
    format="$web.$topic"
@@ -129,10 +132,10 @@ SEARCH
     } else {
         my $solr = Foswiki::Plugins::SolrPlugin->getSearcher();
 
-        my $raw = $solr->solrSearch("topic:*FormManager preference_FormGenerator_Group_s:*", {rows => 9999, fl => "webtopic,preference_FormGenerator_Group_s"})->{raw_response};
+        my $raw = $solr->solrSearch("topic:*FormManager preference_FormGenerator_Group_s:* -web:$Foswiki::cfg{TrashWebName}", {rows => 9999, fl => "webtopic,preference_FormGenerator_Group_s"})->{raw_response};
         $forms = from_json($raw->{_content});
 
-        $raw = $solr->solrSearch("topic:FormGenerator_* preference_FormGenerator_TargetFormGroup_s:*", {rows => 9999, fl => "webtopic,preference_FormGenerator_TargetFormGroup_s,preference_FormGenerator_SourceTopicForm_s"})->{raw_response};
+        $raw = $solr->solrSearch("topic:FormGenerator_* preference_FormGenerator_TargetFormGroup_s:* -web:$Foswiki::cfg{TrashWebName}", {rows => 9999, fl => "webtopic,preference_FormGenerator_TargetFormGroup_s,preference_FormGenerator_SourceTopicForm_s"})->{raw_response};
         $rules = from_json($raw->{_content});
     }
 
@@ -204,19 +207,25 @@ sub _onChange {
     my $db = db();
     if($oldTopic && $oldTopic =~ m#^FormGenerator_#) {
         $db->do("DELETE from rules WHERE webtopic=?", {}, "$oldWeb.$oldTopic");
-        if($newTopic =~ m#^FormGenerator_#) {
+        if($newTopic =~ m#^FormGenerator_# && $newWeb ne $Foswiki::cfg{TrashWebName}) {
             my $formGroup = $newMeta->getPreference('FormGenerator_TargetFormGroup');
             my $sourceForm = $newMeta->getPreference('FormGenerator_SourceTopicForm');
             $db->do("INSERT into rules (webtopic, TargetFormGroup, SourceTopicForm) values (?, ?, ?)", {}, "$newWeb.$newTopic", $formGroup, $sourceForm) if $formGroup;
         }
     } elsif($oldTopic && $oldTopic =~ m#FormManager$#) {
         $db->do("DELETE from formmanagers WHERE webtopic=?", {}, "$oldWeb.$oldTopic");
-        if($newTopic =~ m#FormManager$#) {
+        if($newTopic =~ m#FormManager$# && $newWeb ne $Foswiki::cfg{TrashWebName}) {
             my $formGroup = $newMeta->getPreference('FormGenerator_Group');
             $db->do("INSERT into formmanagers (webtopic, FormGroup) values (?, ?)", {}, "$newWeb.$newTopic", $formGroup) if $formGroup;
         }
     } elsif(not $oldTopic) {
-        $db->do("UPDATE formmanagers SET webtopic=? || substr(webtopic,?) WHERE webtopic LIKE ?", {}, "$newWeb.", length($oldWeb)+1, "$oldWeb.\%");
+        if($newWeb =~ m#^\Q$Foswiki::cfg{TrashWebName}\E(?:$|/|\.)#) {
+            # web was moved to trash, delete from index
+            $db->do("DELETE from rules WHERE webtopic LIKE ?", {}, "$oldWeb.\%");
+            $db->do("DELETE from formmanagers WHERE webtopic LIKE ?", {}, "$oldWeb.\%");
+        } else {
+            $db->do("UPDATE formmanagers SET webtopic=? || substr(webtopic,?) WHERE webtopic LIKE ?", {}, "$newWeb.", length($oldWeb)+1, "$oldWeb.\%");
+        }
     }
 
     # Update forms
