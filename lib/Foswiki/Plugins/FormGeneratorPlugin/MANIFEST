@@ -4,3 +4,4 @@ data/System/FormGeneratorGeneratedFormViewTemplate.txt 0644
 data/System/FormGeneratorManagerViewTemplate.txt 0644
 lib/Foswiki/Plugins/FormGeneratorPlugin.pm 0444 Perl module
 lib/Foswiki/Plugins/FormGeneratorPlugin/Config.spec 0444 Configuration
+locale/FormGeneratorPlugin/de.po 0664
