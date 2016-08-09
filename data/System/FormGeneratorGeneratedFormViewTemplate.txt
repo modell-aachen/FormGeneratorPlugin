@@ -1,0 +1,9 @@
+%TMPL:INCLUDE{"SystemView"}%
+
+%TMPL:DEF{"content"}%%TEXT%
+
+%IF{"istopic '%BASEWEB%.%BASETOPIC%Manager'" then="%MAKETEXT{"This form is managed by [_1]." args="[[%BASEWEB%.%BASETOPIC%Manager]]"}%"}%<!-- -->
+
+%MAKETEXT{"Generators for this form:"}%
+%FORMATLIST{"%FORMGENERATORS{"%QUERY{"'%BASEWEB%.%BASETOPIC%Manager'/META:PREFERENCE[name='FormGenerator_Group'].value"}%" form="%BASEWEB%.%BASETOPIC%"}%" format="   * [[$1]]" separator="$n"}%
+%TMPL:END%

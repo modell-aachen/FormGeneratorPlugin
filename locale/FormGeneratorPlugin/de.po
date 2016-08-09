@@ -1,0 +1,36 @@
+# FormGeneratorPlugin translation for German
+# Translators:
+# ModellAachen
+msgid ""
+msgstr ""
+"Project-Id-Version: FormGeneratorPlugin $Id\n"
+"Report-Msgid-Bugs-To: support@modell-aachen.de\n"
+"POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"PO-Revision-Date: 2016-08-03 16:08+0200\n"
+"Last-Translator: Modell Aachen <support@modell-aachen.de>\n"
+"Language-Team: German\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Generator: Weblate 1.9\n"
+
+msgid "This is the manager for %1. It acts on the group '%2'."
+msgstr "Das ist der Manager für %1. Es reagiert auf die Gruppe '%2'."
+
+msgid "This generator is part of an app, please do not modify!"
+msgstr "Dieser Generator ist Teil einer App, bitte nicht bearbeiten!"
+
+msgid "This form is managed by %1."
+msgstr "Diese Form wird durch %1 verwaltet."
+
+msgid "Generators for this form:"
+msgstr "Generatoren für diese Form:"
+
+msgid "Not allowed to expand %1!"
+msgstr "Nicht berechtigt %1 zu expandieren!"
+
+msgid "This form has been created by FormGeneratorPlugin, <b>do not modify</b>!"
+msgstr "Diese Form wurde durch das FormGeneratorPlugin erstellt, <b>nicht bearbeiten</b>!"
+
