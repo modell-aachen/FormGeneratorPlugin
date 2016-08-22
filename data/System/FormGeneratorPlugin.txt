@@ -66,8 +66,6 @@ You can create extra rules on a per-web and per-form level. They are topics with
 
 Each extra-rule does have a priority and a position, however no group (it belongs to a form) and no !SourceTopicForm.
 
-Macros will not be expanded here.
-
 ---+++ Escapes
 
 There are some special escapes, do make life easier when using the expand macro.

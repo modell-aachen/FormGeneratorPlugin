@@ -376,56 +376,15 @@ sub _generate {
 
     my $errors = '';
 
-    # read in fields
+    # read in rules
     foreach my $group ( @$groups ) {
-        my $grp = {
-            collectedFields => [],
-            seenFields => {},
-            collectedHeaders => [],
-            seenHeaders => {},
-            collectedPrefs => [],
-        };
+        my $grp = [];
         $groupdata{$group} = $grp;
         foreach my $ruleTopic ( _getRulesByGroup($group) ) {
-            # read in the form
-
             my ($ruleWeb, $ruleTopic) = Foswiki::Func::normalizeWebTopicName(undef, $ruleTopic);
             my ($ruleMeta, $rule) = Foswiki::Func::readTopic($ruleWeb, $ruleTopic);
+            push @$grp, $ruleMeta;
 
-            my $rulePrio = $ruleMeta->getPreference('FormGenerator_Priority') || 0;
-            my $ruleOrder = $ruleMeta->getPreference('FormGenerator_Order') || 0;
-
-            if($ruleMeta->getPreference('FormGenerator_ExpandMacros')) {
-                my $ruleWebTopic = "$ruleWeb/$ruleTopic";
-                if($ruleWeb eq $Foswiki::cfg{SystemWebName} || grep { $_ eq $ruleWebTopic } @{$Foswiki::cfg{Extensions}{FormGeneratorPlugin}{allowExpand}}) {
-                    Foswiki::Func::pushTopicContext($ruleWeb, $ruleTopic);
-                    $rule = $ruleMeta->expandMacros($rule);
-                    Foswiki::Func::popTopicContext();
-                } else {
-                    $errors .= '%MAKETEXT{"Not allowed to expand [_1]!" args="'.$ruleWebTopic.'"}%'."\n\n";
-                    $rule = '';
-                }
-            }
-            $rule =~ s#\@DELAY#\%#g;
-            $rule =~ s#\@QUOT#"#g;
-            $rule =~ s#\@NOP##g;
-
-            my ($columns, $fields, $prefs) = _parseFormDefinition($rule);
-            while (my ($k, $v) = each(%$prefs)) {
-                push @{$grp->{collectedPrefs}}, [$rulePrio, $ruleTopic, $ruleOrder, $k, $v];
-            }
-
-            # see where we need to put stuff
-
-            for(my $i = 0; $i < scalar @$columns; $i++) {
-                my $column = $columns->[$i];
-                if ($column && !exists $grp->{seenHeaders}{$column}) {
-                    $grp->{seenHeaders}{$column} = scalar @{$grp->{collectedHeaders}};
-                    push @{$grp->{collectedHeaders}}, $column || '';
-                }
-            }
-
-            push(@{$grp->{collectedFields}}, map {[$rulePrio, $ruleTopic, $ruleOrder, $_->{name}, $_]} @$fields);
         }
     }
 
@@ -448,29 +407,73 @@ sub _generate {
 
         my ($formManagerMeta) = Foswiki::Func::readTopic($web, $formManagerTopic);
         my $customization = $formTopic."ExtraFields";
-        my $formData = $groupdata{$formManagerMeta->getPreference('FormGenerator_Group')};
+        my $formRules = [@{$groupdata{$formManagerMeta->getPreference('FormGenerator_Group')}}];
+
         my $extraIdx = 0;
         while (Foswiki::Func::topicExists($formMeta->web(), $customization . ++$extraIdx)) {
-            $formData = _deepCopy($formData);
             my $currentCustomization = "$customization$extraIdx";
             my ($customizedMeta, $customizedText) = Foswiki::Func::readTopic($formMeta->web(), $currentCustomization);
 
-            my ($ccolumns, $cfields, $cprefs) = _parseFormDefinition($customizedText);
-            my $rulePrio = $customizedMeta->getPreference('FormGenerator_Priority') || 0;
-            my $ruleOrder = $customizedMeta->getPreference('FormGenerator_Order') || 0;
-            while (my ($k, $v) = each(%$cprefs)) {
-                push @{$formData->{collectedPrefs}}, [$rulePrio, $currentCustomization, $ruleOrder, $k, $v];
-            }
-            push @{$formData->{collectedFields}}, map {[$rulePrio, $currentCustomization, $ruleOrder, $_->{name}, $_]} @$cfields;
+            push @$formRules, $customizedMeta;
         }
 
-        #header
-        my $formText = '| ' . join(' | ', map { "*$_*" } @{$formData->{collectedHeaders}}) . " |\n";
 
-        foreach my $field ( _prioritizedUnique($formData->{collectedFields}) ) {
+        my @collectedFields = ();
+        my %seenFields = ();
+        my @collectedHeaders = ();
+        my %seenHeaders = ();
+        my @collectedPrefs = ();
+
+        foreach my $ruleMeta ( @$formRules ) {
+            my $rule = $ruleMeta->text();
+            my $ruleWeb = $ruleMeta->web();
+            my $ruleTopic = $ruleMeta->topic();
+            my $rulePrio = $ruleMeta->getPreference('FormGenerator_Priority') || 0;
+            my $ruleOrder = $ruleMeta->getPreference('FormGenerator_Order') || 0;
+
+            if($ruleMeta->getPreference('FormGenerator_ExpandMacros')) {
+                my $ruleWebTopic = "$ruleWeb/$ruleTopic";
+                if($ruleWeb eq $Foswiki::cfg{SystemWebName} || grep { $_ eq $ruleWebTopic } @{$Foswiki::cfg{Extensions}{FormGeneratorPlugin}{allowExpand}}) {
+                    Foswiki::Func::pushTopicContext($web, $formTopic);
+                    $rule = $ruleMeta->expandMacros($rule);
+                    Foswiki::Func::popTopicContext();
+                } else {
+                    $errors .= '%MAKETEXT{"Not allowed to expand [_1]!" args="'.$ruleWebTopic.'"}%'."\n\n";
+                    $rule = '';
+                }
+            }
+            $rule =~ s#\@DELAY#\%#g;
+            $rule =~ s#\@QUOT#"#g;
+            $rule =~ s#\@NOP##g;
+
+            my ($columns, $fields, $prefs) = _parseFormDefinition($rule);
+            while (my ($k, $v) = each(%$prefs)) {
+                push @collectedPrefs, [$rulePrio, $ruleTopic, $ruleOrder, $k, $v];
+            }
+
+            # see where we need to put stuff
+
+            for(my $i = 0; $i < scalar @$columns; $i++) {
+                my $column = $columns->[$i];
+                if ($column && !exists $seenHeaders{$column}) {
+                    $seenHeaders{$column} = scalar @collectedHeaders;
+                    push @collectedHeaders, $column || '';
+                }
+            }
+
+            push(@collectedFields, map {[$rulePrio, $ruleTopic, $ruleOrder, $_->{name}, $_]} @$fields);
+        }
+
+        # build the new form
+
+        # header
+        my $formText = '| ' . join(' | ', map { "*$_*" } @collectedHeaders) . " |\n";
+
+        # form
+        foreach my $field ( _prioritizedUnique(\@collectedFields) ) {
             next if $field->[4]{type} eq '@REMOVE';
             my @outputFields;
-            for my $header (@{$formData->{collectedHeaders}}) {
+            for my $header (@collectedHeaders) {
                 my $value = $field->[4]{$header};
                 push @outputFields, defined $value ? $value : '';
             }
@@ -480,9 +483,9 @@ sub _generate {
         }
 
         # extra stuff
-        if (scalar @{$formData->{collectedPrefs}}) {
+        if (scalar @collectedPrefs) {
             $formText .= "\n";
-            for my $pref ( sort { $a->[3] cmp $b->[3] } _prioritizedUnique($formData->{collectedPrefs}) ) {
+            for my $pref ( sort { $a->[3] cmp $b->[3] } _prioritizedUnique(\@collectedPrefs) ) {
                 next if $pref->[4] eq '@REMOVE';
                 $formText .= "   * Set $pref->[3] = $pref->[4]\n";
             }
