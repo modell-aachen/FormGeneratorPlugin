@@ -12,7 +12,8 @@ $Foswiki::cfg{Extensions}{FormGeneratorPlugin}{Condition} = '%GETWORKFLOWROW{app
 
 # **STRING**
 # Groups and people, that are allowed to create ExtraFields topics.
-$Foswiki::cfg{Extensions}{FormGeneratorPlugin}{AllowExtraFields} = '%IF{"%GETWORKFLOWROW{uncontrolled}%" then="KeyUserGroup" else="LOGGEDIN"}%';
+# Defaults to <pre>%<nop>IF{"'%<nop>WORKFLOWMETA%'=''" then="KeyUserGroup" else="LOGGEDIN"}%</pre>
+$Foswiki::cfg{Extensions}{FormGeneratorPlugin}{AllowExtraFields} = '';
 
 # **PERL**
 # Array of webs, where FormGenerators may be created.

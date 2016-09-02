@@ -356,7 +356,7 @@ sub _mayEditTopic {
 
         my $cuid = Foswiki::Func::getCanonicalUserID();
 
-        my $cfg = $Foswiki::cfg{Extensions}{FormGeneratorPlugin}{AllowExtraFields};
+        my $cfg = $Foswiki::cfg{Extensions}{FormGeneratorPlugin}{AllowExtraFields} || '%IF{"\'%WORKFLOWMETA%\'=\'\'" then="KeyUserGroup" else="LOGGEDIN"}%';
         $cfg = $meta->expandMacros($cfg);
         $cfg =~ s#\s##g;
         my @allowed = split(',', $cfg);
