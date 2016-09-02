@@ -7,6 +7,7 @@ use warnings;
 
 use Foswiki::Func    ();    # The plugins API
 use Foswiki::Plugins ();    # For the API version
+use Foswiki::Plugins::KVPPlugin;
 
 use JSON;
 use DBI;
@@ -61,6 +62,29 @@ sub finishPlugin {
     undef $db;
 }
 
+sub _isEnabled {
+    my ($meta) = @_;
+
+    my $deactivated = $meta->get('PREFERENCE', 'FormGenerator_Disabled');
+    return 0 if $deactivated && $deactivated->{value};
+    return 1;
+}
+
+sub _checkCondition {
+    my ($meta) = @_;
+
+    my $condition = $Foswiki::cfg{Extensions}{FormGeneratorPlugin}{Condition};
+    return 1 unless defined $condition && $condition ne '';
+
+    return Foswiki::Func::isTrue($meta->expandMacros($condition));
+}
+
+sub _checkUseGenerator {
+    my ($meta) = @_;
+
+    return _isEnabled($meta) && _checkCondition($meta);
+}
+
 # Rebuild index using SolrPlugin.
 sub restIndex {
     my ( $session, $subject, $verb, $response ) = @_;
@@ -107,14 +131,15 @@ SEARCH
         }
 
         # generators
-        my @rulesArray = split(',', Foswiki::Func::expandCommonVariables(<<'SEARCH'));
+        my $gwebs = join(',', $Foswiki::cfg{Extensions}{FormGeneratorPlugin}{FormGeneratorWebs});
+        my @rulesArray = split(',', Foswiki::Func::expandCommonVariables(<<"SEARCH"));
 %SEARCH{
    "preferences.FormGenerator_TargetFormGroup.value"
    topic="FormGenerator_*"
-   web="all,-%QUERY{"{TrashWebName}"}%"
+   web="$gwebs"
    type="query"
    nonoise="1"
-   format="$web.$topic"
+   format="\$web.\$topic"
    separator=","
 }%
 SEARCH
@@ -135,7 +160,8 @@ SEARCH
         my $raw = $solr->solrSearch("topic:*FormManager preference_FormGenerator_Group_s:* -web:$Foswiki::cfg{TrashWebName}", {rows => 9999, fl => "webtopic,preference_FormGenerator_Group_s"})->{raw_response};
         $forms = from_json($raw->{_content});
 
-        $raw = $solr->solrSearch("topic:FormGenerator_* preference_FormGenerator_TargetFormGroup_s:* -web:$Foswiki::cfg{TrashWebName}", {rows => 9999, fl => "webtopic,preference_FormGenerator_TargetFormGroup_s,preference_FormGenerator_SourceTopicForm_s"})->{raw_response};
+        my $gwebs = join(' OR ', $Foswiki::cfg{Extensions}{FormGeneratorPlugin}{FormGeneratorWebs});
+        $raw = $solr->solrSearch("topic:FormGenerator_* preference_FormGenerator_TargetFormGroup_s:* web:($gwebs)", {rows => 9999, fl => "webtopic,preference_FormGenerator_TargetFormGroup_s,preference_FormGenerator_SourceTopicForm_s"})->{raw_response};
         $rules = from_json($raw->{_content});
     }
 
@@ -173,20 +199,24 @@ sub _tagFORMGENERATORS {
     my $group = $attributes->{_DEFAULT} || '';
     my @rules = _getRulesByGroup($group);
 
-    my $result = join(',', @rules);
-
     my $form = $attributes->{form};
     if($form) {
         my ($web, $topic) = Foswiki::Func::normalizeWebTopicName(undef, $form);
         my $customization = $topic."ExtraFields";
         my $extraIdx = 0;
         while (Foswiki::Func::topicExists($web, $customization . ++$extraIdx)) {
-            $result .= ',' if $result;
-            $result .= $customization . $extraIdx;
+            push @rules, "$web.$customization$extraIdx";
         }
     }
 
-    return $result;
+    my @result = ();
+    foreach my $rule ( @rules ) {
+        my ($ruleWeb, $ruleTopic) = Foswiki::Func::normalizeWebTopicName(undef, $rule);
+        my ($meta) = Foswiki::Func::readTopic($ruleWeb, $ruleTopic);
+
+        push @result, "$rule " . (_checkUseGenerator($meta) ? 'used' : 'unused');
+    }
+    return join(',', @result);
 }
 
 # Manages topic changes.
@@ -207,7 +237,7 @@ sub _onChange {
     my $db = db();
     if($oldTopic && $oldTopic =~ m#^FormGenerator_#) {
         $db->do("DELETE from rules WHERE webtopic=?", {}, "$oldWeb.$oldTopic");
-        if($newTopic =~ m#^FormGenerator_# && $newWeb ne $Foswiki::cfg{TrashWebName}) {
+        if($newTopic =~ m#^FormGenerator_# && scalar grep{$_ eq $newWeb} $Foswiki::cfg{Extensions}{FormGeneratorPlugin}{FormGeneratorWebs}) {
             my $formGroup = $newMeta->getPreference('FormGenerator_TargetFormGroup');
             my $sourceForm = $newMeta->getPreference('FormGenerator_SourceTopicForm');
             $db->do("INSERT into rules (webtopic, TargetFormGroup, SourceTopicForm) values (?, ?, ?)", {}, "$newWeb.$newTopic", $formGroup, $sourceForm) if $formGroup;
@@ -306,6 +336,49 @@ sub _applySchema {
     }
 }
 
+sub _mayEditTopic {
+    my ($web, $topic, $meta) = @_;
+
+    # XXX: an admin may create a generator outside of an allowed web, however
+    # it will not be considered during generation and no message will be shown
+    return 1 if Foswiki::Func::isAnAdmin();
+
+    return 1 unless defined $topic;
+
+    return 1 if $web eq $Foswiki::cfg{TrashWebName};
+
+    if($topic =~ m#^FormGenerator_#) {
+        return scalar grep{$_ eq $web} $Foswiki::cfg{Extensions}{FormGeneratorPlugin}{FormGeneratorWebs};
+    } elsif ($topic =~ m#FormExtraFields\d+$#) {
+        # XXX: In KVPPlugin we trust. We have no choice, because the
+        # expandMacros call will not succeed.
+        return 1 if Foswiki::Plugins::KVPPlugin::isStateChange();
+
+        my $cuid = Foswiki::Func::getCanonicalUserID();
+
+        my $cfg = $Foswiki::cfg{Extensions}{FormGeneratorPlugin}{AllowExtraFields};
+        $cfg = $meta->expandMacros($cfg);
+        $cfg =~ s#\s##g;
+        my @allowed = split(',', $cfg);
+
+        foreach my $allowed ( @allowed ) {
+            if(Foswiki::Func::isGroup($allowed)) {
+                return 1 if Foswiki::Func::isGroupMember($allowed, $cuid, {expand => 1});
+                next;
+            }
+
+            return 1 if $allowed eq 'LOGGEDIN' && !Foswiki::Func::isGuest();
+
+            $allowed = Foswiki::Func::getCanonicalUserID($allowed);
+            return 1 if defined $allowed && $allowed eq $cuid;
+        }
+        return 0;
+    }
+    return 1;
+}
+
+#   * Record changes of generators/managers
+#   * Inhibit creation of generators when not permitted
 sub afterRenameHandler {
     my ($web, $topic, $attachment, $newWeb, $newTopic) = @_;
 
@@ -313,9 +386,65 @@ sub afterRenameHandler {
 
     my ($meta) = Foswiki::Func::readTopic($newWeb, $newTopic) if defined $newTopic;
 
+    unless(_mayEditTopic($newWeb, $newTopic, $meta)) {
+        # XXX: I can not inhibit the rename in the first place, so I will try
+        # to repair the damage by disabling this.
+        #
+        # XXX: It is still possible to delete an ExtraFields topic.
+
+        # find new place
+        my $inhibitedTopic = "Inhibited$newTopic";
+        my $inhibitedBase = $inhibitedTopic;
+        my $c = 0;
+        while(Foswiki::Func::topicExists($newWeb, $inhibitedTopic)) {
+            $inhibitedTopic = $inhibitedBase . ++$c;
+        }
+
+        # move it there and record the change
+        my $session = $Foswiki::Plugins::SESSION;
+        my $inhibitedMeta = Foswiki::Meta->new($session, $newWeb, $inhibitedTopic);
+        $meta->move($inhibitedMeta);
+        _onChange($web, $topic, $newWeb, $inhibitedTopic, $meta);
+
+        # Notify the user
+        my $message = Foswiki::Func::expandCommonVariables('%MAKETEXT{"Editing form generators is restricted. The topic has been renamed."}%');
+        throw Foswiki::OopsException(
+            'accessdenied',
+            status => 403,
+            def    => 'topic_access',
+            web    => $_[2],
+            topic  => $_[1],
+            params => [
+                'Edit topic',
+                $message
+            ]
+        );
+    }
+
     _onChange($web, $topic, $newWeb, $newTopic, $meta);
 }
 
+# Will inhibit the save, if the user may not modify the generators.
+sub beforeSaveHandler {
+    my ( $text, $topic, $web, $newMeta ) = @_;
+
+    unless(_mayEditTopic($web, $topic, $newMeta)) {
+        my $message = Foswiki::Func::expandCommonVariables('%MAKETEXT{"Editing form generators is restricted."}%');
+        throw Foswiki::OopsException(
+            'accessdenied',
+            status => 403,
+            def    => 'topic_access',
+            web    => $_[2],
+            topic  => $_[1],
+            params => [
+                'Edit topic',
+                $message
+            ]
+        );
+    }
+}
+
+# Record changes of generators.
 sub afterSaveHandler {
     my ( $text, $topic, $web, undef, $newMeta ) = @_;
 
@@ -383,7 +512,7 @@ sub _generate {
         foreach my $ruleTopic ( _getRulesByGroup($group) ) {
             my ($ruleWeb, $ruleTopic) = Foswiki::Func::normalizeWebTopicName(undef, $ruleTopic);
             my ($ruleMeta, $rule) = Foswiki::Func::readTopic($ruleWeb, $ruleTopic);
-            push @$grp, $ruleMeta;
+            push @$grp, $ruleMeta if _checkUseGenerator($ruleMeta);
 
         }
     }
@@ -414,7 +543,7 @@ sub _generate {
             my $currentCustomization = "$customization$extraIdx";
             my ($customizedMeta, $customizedText) = Foswiki::Func::readTopic($formMeta->web(), $currentCustomization);
 
-            push @$formRules, $customizedMeta;
+            push @$formRules, $customizedMeta if _checkUseGenerator($customizedMeta);
         }
 
 
@@ -424,12 +553,16 @@ sub _generate {
         my %seenHeaders = ();
         my @collectedPrefs = ();
 
+        my @usedRules = ();
+
         foreach my $ruleMeta ( @$formRules ) {
             my $rule = $ruleMeta->text();
             my $ruleWeb = $ruleMeta->web();
             my $ruleTopic = $ruleMeta->topic();
             my $rulePrio = $ruleMeta->getPreference('FormGenerator_Priority') || 0;
             my $ruleOrder = $ruleMeta->getPreference('FormGenerator_Order') || 0;
+
+            push @usedRules, "$ruleWeb.$ruleTopic";
 
             if($ruleMeta->getPreference('FormGenerator_ExpandMacros')) {
                 my $ruleWebTopic = "$ruleWeb/$ruleTopic";
@@ -491,7 +624,7 @@ sub _generate {
             }
         }
 
-        # footer / view-template / mark as generated / ACLs
+        # footer / view-template / mark as generated / ACLs / remember rules
         $formText = '%RED%%MAKETEXT{"This form has been created by FormGeneratorPlugin, <b>do not modify</b>!"}%%ENDCOLOR%'."\n\n$formText";
         $formText .= "\n\n\%RED\%<b>ERRORS:</b>\n\n$errors\%ENDCOLOR\%" if $errors;
         $formText .= "\n<!--\n   * Local VIEW_TEMPLATE = FormGeneratorGeneratedFormView\n-->\n";
@@ -499,6 +632,7 @@ sub _generate {
         $formMeta->putKeyed('PREFERENCE', {type => 'Set', name => 'WORKFLOW', title => 'WORKFLOW' , value => ''} );
         $formMeta->putKeyed('PREFERENCE', {type => 'Set', name => 'ALLOWTOPICCHANGE', title => 'ALLOWTOPICCHANGE' , value => 'AdminGroup'} );
         $formMeta->putKeyed('PREFERENCE', {type => 'Set', name => 'DISPLAYCOMMENTS', title => 'DISPLAYCOMMENTS' , value => 'off'} );
+        $formMeta->putKeyed('PREFERENCE', {type => 'Set', name => 'UsedRules', title => 'UsedRules', value => join(',', @usedRules)});
 
         if($oldText ne $formText) { # TODO: we will not notice, when preferences changed, however this is unlikely to happen without text changes
             $formMeta->text($formText);
