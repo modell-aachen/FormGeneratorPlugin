@@ -131,7 +131,7 @@ SEARCH
         }
 
         # generators
-        my $gwebs = join(',', $Foswiki::cfg{Extensions}{FormGeneratorPlugin}{FormGeneratorWebs});
+        my $gwebs = join(',', @{$Foswiki::cfg{Extensions}{FormGeneratorPlugin}{FormGeneratorWebs}});
         my @rulesArray = split(',', Foswiki::Func::expandCommonVariables(<<"SEARCH"));
 %SEARCH{
    "preferences.FormGenerator_TargetFormGroup.value"
@@ -160,7 +160,7 @@ SEARCH
         my $raw = $solr->solrSearch("topic:*FormManager preference_FormGenerator_Group_s:* -web:$Foswiki::cfg{TrashWebName}", {rows => 9999, fl => "webtopic,preference_FormGenerator_Group_s"})->{raw_response};
         $forms = from_json($raw->{_content});
 
-        my $gwebs = join(' OR ', $Foswiki::cfg{Extensions}{FormGeneratorPlugin}{FormGeneratorWebs});
+        my $gwebs = join(' OR ', @{$Foswiki::cfg{Extensions}{FormGeneratorPlugin}{FormGeneratorWebs}});
         $raw = $solr->solrSearch("topic:FormGenerator_* preference_FormGenerator_TargetFormGroup_s:* web:($gwebs)", {rows => 9999, fl => "webtopic,preference_FormGenerator_TargetFormGroup_s,preference_FormGenerator_SourceTopicForm_s"})->{raw_response};
         $rules = from_json($raw->{_content});
     }
@@ -237,7 +237,7 @@ sub _onChange {
     my $db = db();
     if($oldTopic && $oldTopic =~ m#^FormGenerator_#) {
         $db->do("DELETE from rules WHERE webtopic=?", {}, "$oldWeb.$oldTopic");
-        if($newTopic =~ m#^FormGenerator_# && scalar grep{$_ eq $newWeb} $Foswiki::cfg{Extensions}{FormGeneratorPlugin}{FormGeneratorWebs}) {
+        if($newTopic =~ m#^FormGenerator_# && scalar grep{$_ eq $newWeb} @{$Foswiki::cfg{Extensions}{FormGeneratorPlugin}{FormGeneratorWebs}}) {
             my $formGroup = $newMeta->getPreference('FormGenerator_TargetFormGroup');
             my $sourceForm = $newMeta->getPreference('FormGenerator_SourceTopicForm');
             $db->do("INSERT into rules (webtopic, TargetFormGroup, SourceTopicForm) values (?, ?, ?)", {}, "$newWeb.$newTopic", $formGroup, $sourceForm) if $formGroup;
@@ -348,7 +348,7 @@ sub _mayEditTopic {
     return 1 if $web eq $Foswiki::cfg{TrashWebName};
 
     if($topic =~ m#^FormGenerator_#) {
-        return scalar grep{$_ eq $web} $Foswiki::cfg{Extensions}{FormGeneratorPlugin}{FormGeneratorWebs};
+        return scalar grep{$_ eq $web} @{$Foswiki::cfg{Extensions}{FormGeneratorPlugin}{FormGeneratorWebs}};
     } elsif ($topic =~ m#FormExtraFields\d+$#) {
         # XXX: In KVPPlugin we trust. We have no choice, because the
         # expandMacros call will not succeed.
