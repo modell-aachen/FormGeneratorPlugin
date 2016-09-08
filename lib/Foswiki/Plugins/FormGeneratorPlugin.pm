@@ -272,6 +272,13 @@ sub _onChange {
         $groups{$newMeta->getPreference('FormGenerator_TargetFormGroup')} = 1;
     } elsif ($newTopic =~ /FormManager$/) {
         $groups{$newMeta->getPreference('FormGenerator_Group')} = 1;
+    } elsif ($oldTopic && $oldTopic =~ /^(.*Form)ExtraFields\d+$/) {
+        my $formMananger = "$1Manager";
+        if (Foswiki::Func::topicExists($oldWeb, $formManager)) {
+            ($formManager) = Foswiki::Func::readTopic($oldWeb, $formManager);
+            my $target = $formManager->getPreference('FormGenerator_Group');
+            $groups{$target} = 1 if $target;
+        }
     } elsif ($newTopic =~ /^(.*Form)ExtraFields\d+$/) {
         my $formManager = "$1Manager";
         if (Foswiki::Func::topicExists($newWeb, $formManager)) {
