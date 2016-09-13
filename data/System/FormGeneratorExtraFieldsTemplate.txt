@@ -1,0 +1,12 @@
+| *name* | *type* | *size* | *values* | *description* | *attributes* |
+
+
+   * Set FormGenerator_Priority = 0
+   * Set FormGenerator_Order = 1
+
+<verbatim>
+| Example | text | 50 |  | %MAKETEXT{"description"}% | M |
+</verbatim>
+
+
+%META:PREFERENCE{name="VIEW_TEMPLATE" title="VIEW_TEMPLATE" type="Set" value="FormGeneratorExtraFieldsView"}%

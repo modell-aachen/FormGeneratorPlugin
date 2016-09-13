@@ -1,4 +1,6 @@
 !noci
+data/System/FormGeneratorExtraFieldsTemplate.txt 0644
+data/System/FormGeneratorExtraFieldsViewTemplate.txt 0644
 data/System/FormGeneratorPlugin.txt 0644 Documentation page
 data/System/FormGeneratorGeneratedFormViewTemplate.txt 0644
 data/System/FormGeneratorManagerViewTemplate.txt 0644

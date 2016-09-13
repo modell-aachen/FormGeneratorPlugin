@@ -1,0 +1,7 @@
+%TMPL:INCLUDE{"SystemView"}%
+
+%TMPL:DEF{"content"}%%TEXT%
+
+%MAKETEXT{"This is an ExtraFieldsForm for [_1]." arg1="[[%BASEWEB%.%SUBST{text="%BASETOPIC%" pattern="ExtraFields\d\d?$" format=""}%]]"}%
+
+%TMPL:END%

@@ -19,6 +19,9 @@ msgstr ""
 msgid "This is the manager for %1. It acts on the group '%2'."
 msgstr "Das ist der Manager für %1. Es reagiert auf die Gruppe '%2'."
 
+msgid "This is an ExtraFieldsForm for %1."
+msgstr "Dies ist eine ExtraFieldsFrom für %1."
+
 msgid "This generator is part of an app, please do not modify!"
 msgstr "Dieser Generator ist Teil einer App, bitte nicht bearbeiten!"
 

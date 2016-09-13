@@ -143,6 +143,9 @@ SEARCH
    separator=","
 }%
 SEARCH
+        if (scalar @rulesArray == 1 && @rulesArray[0] eq "\n"){
+            return "No FormGernerators found in $gwebs."
+        }
         $rules = { response => { docs => [] } };
         foreach my $rule ( @rulesArray ) {
             my ($web, $topic) = Foswiki::Func::normalizeWebTopicName(undef, $rule);
@@ -204,6 +207,7 @@ sub _tagFORMGENERATORS {
         my ($web, $topic) = Foswiki::Func::normalizeWebTopicName(undef, $form);
         my $customization = $topic."ExtraFields";
         my $extraIdx = 0;
+        push @rules, "$web.$customization$extraIdx" if Foswiki::Func::topicExists($web, $customization . $extraIdx);
         while (Foswiki::Func::topicExists($web, $customization . ++$extraIdx)) {
             push @rules, "$web.$customization$extraIdx";
         }
