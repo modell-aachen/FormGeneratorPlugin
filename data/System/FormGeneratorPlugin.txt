@@ -1,0 +1,103 @@
+%META:TOPICPARENT{name="Plugins"}%
+<!--
+One line description, required for extensions repository catalog.
+   * Set SHORTDESCRIPTION = %$SHORTDESCRIPTION%
+-->
+---+!! Automatically generate forms from multiple sources.
+
+%SHORTDESCRIPTION%
+
+%TOC%
+
+---++ Usage
+
+Forms to be generated will be added to a group via a preference. Each group has a set of generators which determine how the form will be generated. The generators may have priorities and can override each other.
+
+During generation the TML in the generators will be expanded. The result should be a valid form table. Below the table may be multiple preferences (to be set with =<nop>   &#42; Set setting = ...=) which will also be added to the form.
+
+Customization can be done by creating extra-rules in the target web.
+
+*NOTE:* You must not use Solr for generating the forms, since it's index is probably not up to date when the generation is taking place.
+
+---+++ Form
+
+The form will be gernerated automatically. Old forms will not be overwritten; delete them and use the index link below, if you want them to be generated.
+
+---+++ !FormManagers
+
+!FormManagers tell the plugin which forms it should generate. They have the same name as the form but =Manager= appended, eg. =DocumentForm= will have the manager =DocumentFormManager=.
+
+Set the group by setting =FormGenerator_Group= as a _preference_ (do not put this into the =%<nop>TEXT%=).
+
+<pre>
+   &#42; Set FormGenerator_Group = <i>MyGroup</i>
+</pre>
+
+You should also set the =VIEW_TEMPLATE= to =FormGeneratorManagerView=.
+
+If you do not want anyone to make changes to that manager (because it should be updatable), set =FormGenerator_AppControlled = 1= in the manager's preferences (again not in =TEXT=).
+
+---+++ Generators
+
+Again, set any setting as _preference_ and not by putting it into the =%<nop>TEXT%=.
+
+Eg.
+<pre>
+   &#42; Set FormGenerator_TargetFormGroup = <i>MyGroup</i>
+   &#42; Set FormGenerator_SourceTopicForm = <i>FormThatTriggersGeneration</i>
+   &#42; Set FormGenerator_Priority = 100
+   &#42; Set FormGenerator_Order = -5
+</pre>
+
+| *Setting* | *values* | *Meaning* |
+| =FormGenerator_TargetFormGroup= | _any text_ | This determines, which group the generator will apply to. |
+| =FormGenerator_SourceTopicForm= | _web.topic_ | This setting is optional. When a topic with this form is saved, the generator will be triggered. |
+| =FormGenerator_Priority= | _any positive or negative number_%BR%=-1=, =0=, =100= | This is the priority for the rule. Defaults to =0=. Higher priorities win. May be negative. |
+| =FormGenerator_Order= | _any positive or negative number_%BR%=-1=, =0=, =100= |  This determines to position in the generated form. Defaults to =0=. Lower value means higher in the generated table. May be negative. |
+| =FormGenerator_ExpandMacros= | =1= or =0= | When set to perl-true, macros in the generator will be expanded. Note, that generators outside of [[%SYSTEMWEB%.%HOMETOPIC%][%SYSTEMWEB%]] will need to be white-listed in configure. |
+| =FormGenerator_Disabled= | =1= or =0= | Set this to perl-true (eg. =1=) to deactivate this rule. |
+
+---+++ =@REMOVE=
+
+If you set a setting or field type to =@REMOVE=, the field/setting will be removed.
+
+---+++ Customization / =ExtraFields=
+
+You can create extra rules on a per-web and per-form level. They are topics with the form's name suffixed with =ExtraFields= and a number (starting at =1=, consecutive), eg. when you form is called =MyForm=, you might want to create =MyFormExtraFields1= and =MyFormExtraFields2= and so on.
+
+Each extra-rule does have a priority and a position, however no group (it belongs to a form) and no !SourceTopicForm.
+
+---+++ Escapes
+
+There are some special escapes, do make life easier when using the expand macro.
+
+| *Escape* | *Expands to* | *Analog in standard escapes* |
+| =@DELAY= | =%= | =$percent= |
+| =@QUOT= | ="= | =$quot= |
+| =@NOP= | _will be removed_ | =&lt;nop&gt;= |
+
+---+++ AppManagerPlugin
+
+After you have installed an app via AppManagerPlugin, you must manually index all generators. Use any of these links:
+   * [[%SCRIPTURL{rest}%/FormGeneratorPlugin/index?generate=1][index and generate with solr (as admin user)]]
+   * [[%SCRIPTURL{rest}%/FormGeneratorPlugin/index?mode=nosolr;generate=1][index and generate without solr (as admin user)]]
+
+---+++ Configure
+
+If you want to use =ExpandMacros= in generators outside of your [[%SYSTEMWEB%.%HOMETOPIC%][%SYSTEMWEB%]] web, you will need to add them to ={Extensions}{FormGeneratorPlugin}{allowExpand}=.
+
+---++ Installation
+%$INSTALL_INSTRUCTIONS%
+
+---++ Info
+
+|  Author: | Modell Aachen !GmbH |
+|  Copyright: | 2016, Modell Aachen !GmbH, All Rights Reserved |
+|  License: | GPL ([[http://www.gnu.org/copyleft/gpl.html][GNU General Public License]]) |
+|  Dependencies: |  |
+|  Version: | %$VERSION% |
+|  Release: | %$RELEASE% |
+|  Change&nbsp;History: | <!-- versions below in reverse order -->&nbsp; |
+|  1.0.0 (2016.07.28): | Initial version |
+|  Home: | http://modell-aachen.de |
+|  Support: | http://modell-aachen.de |
