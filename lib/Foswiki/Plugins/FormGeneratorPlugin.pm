@@ -143,7 +143,7 @@ SEARCH
    separator=","
 }%
 SEARCH
-        if (scalar @rulesArray == 1 && @rulesArray[0] eq "\n"){
+        if (scalar @rulesArray == 1 && $rulesArray[0] eq "\n"){
             return "No FormGernerators found in $gwebs."
         }
         $rules = { response => { docs => [] } };
