@@ -1,4 +1,4 @@
-%TMPL:INCLUDE{"SystemView"}%
+%TMPL:INCLUDE{"view"}%
 
 %TMPL:DEF{"content"}%%TEXT%
 
