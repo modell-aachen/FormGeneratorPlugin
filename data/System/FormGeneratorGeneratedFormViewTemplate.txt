@@ -3,7 +3,7 @@
 %TMPL:DEF{"content"}%%TEXT%
 
 %BUTTON{"Create ExtraFieldsTopic"
-   href="%SCRIPTURL{edit}%/%WEB%/%TOPIC%ExtraFieldsAUTOINC0?templatetopic=%SYSTEMWEB%.FormGeneratorExtraFieldsTemplate;t=%GMTIME{"$epoch"}%;nowysiwyg=1"
+   href="%SCRIPTURL{edit}%/%WEB%/%TOPIC%ExtraFieldsAUTOINC1?templatetopic=%SYSTEMWEB%.FormGeneratorExtraFieldsTemplate;t=%GMTIME{"$epoch"}%;nowysiwyg=1"
 }%
 
 %IF{"istopic '%BASEWEB%.%BASETOPIC%Manager'" then="%MAKETEXT{"This form is managed by [_1]." args="[[%BASEWEB%.%BASETOPIC%Manager]]"}%"}%<!-- -->
