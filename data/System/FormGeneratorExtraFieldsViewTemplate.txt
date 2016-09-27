@@ -1,7 +1,27 @@
 %TMPL:INCLUDE{"view"}%
 
-%TMPL:DEF{"content"}%%TEXT%
+%TMPL:DEF{"content"}%%TMPL:P{"FormGeneratorPreferences"}%%TEXT%
 
 %MAKETEXT{"This is an ExtraFieldsForm for [_1]." arg1="[[%BASEWEB%.%SUBST{text="%BASETOPIC%" pattern="ExtraFields\d\d?$" format=""}%]]"}%
 
-%TMPL:END%
+%TMPL:P{"SetVariable"}%%TMPL:END%
+
+%TMPL:DEF{"SetVariable"}%%SETVAR{
+  "FormGenerator_Priority"
+  type="Set"
+  value="$percntURLPARAM{\"Priority\" default=\"$percentFomrGenerator_Priority{default=\"0\"}$percent\"}$percnt"
+}%%SETVAR{
+  "FormGenerator_Order"
+  type="Set"
+  value="$percntURLPARAM{\"Order\" default=\"$percentFomrGenerator_Order{default=\"0\"}$percent\"}$percnt"
+}%%SETVAR{
+  "FormGenerator_Disabled"
+  type="Set"
+  value="$percntURLPARAM{\"Disabled\" default=\"$percentFomrGenerator_Disabled{default=\"0\"}$percent\"}$percnt"
+}%%TMPL:END%
+
+%TMPL:DEF{"FormGeneratorPreferences"}%<table><tbody>
+<tr><td>%MAKETEXT{"Priority"}%</td><td>%FormGenerator_Priority{default="0"}%</td></tr>
+<tr><td>%MAKETEXT{"Order"}%</td><td>%FormGenerator_Order{default="0"}%</td></tr>
+<tr><td>%MAKETEXT{"Disabled"}%</td><td><input type="checkbox" disabled="disabled" %IF{"%FormGenerator_Disabled{default="0"}%" then="checked=\"checked\""}% /></td></tr>
+</tbody></table>%TMPL:END%
