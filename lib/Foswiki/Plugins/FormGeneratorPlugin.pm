@@ -549,13 +549,6 @@ sub _generate {
         my $customization = $formTopic."ExtraFields";
         my $formRules = [@{$groupdata{$formManagerMeta->getPreference('FormGenerator_Group')}}];
 
-        # Consider ...ExtraFields0 separately for compatibility
-        if (Foswiki::Func::topicExists($formMeta->web, $customization.'0')) {
-            my $currentCustomization = $customization.'0';
-            my ($customizedMeta, $customizedText) = Foswiki::Func::readTopic($formMeta->web(), $currentCustomization);
-
-            push @$formRules, $customizedMeta if _checkUseGenerator($customizedMeta);
-        }
         my $extraIdx = 0;
         while (Foswiki::Func::topicExists($formMeta->web(), $customization . ++$extraIdx)) {
             my $currentCustomization = "$customization$extraIdx";
