@@ -592,7 +592,7 @@ sub _generate {
 
             my ($columns, $fields, $prefs) = _parseFormDefinition($rule);
             while (my ($k, $v) = each(%$prefs)) {
-                push @collectedPrefs, [$rulePrio, $ruleTopic, $ruleOrder, $k, $v];
+                push @collectedPrefs, [$rulePrio, "$ruleWeb.$ruleTopic", $ruleOrder, $k, $v];
             }
 
             # see where we need to put stuff
