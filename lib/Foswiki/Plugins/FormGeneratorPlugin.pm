@@ -563,6 +563,7 @@ sub _generate {
         my @collectedHeaders = ();
         my %seenHeaders = ();
         my @collectedPrefs = ();
+        my @collectedReplaceFields = ();
 
         my @usedRules = ();
 
@@ -605,7 +606,14 @@ sub _generate {
                 }
             }
 
-            push(@collectedFields, map {[$rulePrio, $ruleTopic, $ruleOrder, $_->{name}, $_]} @$fields);
+            foreach my $field (@$fields) {
+                if (defined $field->{attributes} && $field->{attributes} =~ m#\@REPLACE\b#) {
+                    $field->{attributes} =~ s#\s*\@REPLACE\s*# #;
+                    push(@collectedReplaceFields, [$rulePrio, "$ruleWeb.$ruleTopic", $ruleOrder, $field->{name}, $field]);
+                } else {
+                    push(@collectedFields, [$rulePrio, "$ruleWeb.$ruleTopic", $ruleOrder, $field->{name}, $field]);
+                }
+            }
         }
 
         # build the new form
@@ -614,8 +622,18 @@ sub _generate {
         my $formText = '| ' . join(' | ', map { "*$_*" } @collectedHeaders) . " |\n";
 
         # form
-        foreach my $field ( _prioritizedUnique(\@collectedFields) ) {
-            next if $field->[4]{type} eq '@REMOVE';
+        my @generatedRules = _prioritizedUnique(\@collectedFields);
+        my @generatedReplaceRules = _prioritizedUnique(\@collectedReplaceFields);
+        foreach my $field ( @generatedRules ) {
+            if ($field->[4]{type} eq '@REMOVE') {
+                next;
+            }
+
+            my @replace = grep{ $_->[3] eq $field->[3] } @collectedReplaceFields;
+            if(scalar @replace) {
+                $field = $replace[0];
+            }
+
             my @outputFields;
             for my $header (@collectedHeaders) {
                 my $value = $field->[4]{$header};
@@ -628,9 +646,12 @@ sub _generate {
 
         # extra stuff
         if (scalar @collectedPrefs) {
+            my @generatedPrefs = _prioritizedUnique(\@collectedPrefs);
             $formText .= "\n";
-            for my $pref ( sort { $a->[3] cmp $b->[3] } _prioritizedUnique(\@collectedPrefs) ) {
-                next if $pref->[4] eq '@REMOVE';
+            for my $pref ( sort { $a->[3] cmp $b->[3] } @generatedPrefs ) {
+                if ( $pref->[4] eq '@REMOVE' ) {
+                    next;
+                }
                 $formText .= "   * Set $pref->[3] = $pref->[4]\n";
             }
         }

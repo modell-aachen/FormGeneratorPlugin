@@ -57,9 +57,11 @@ Eg.
 | =FormGenerator_ExpandMacros= | =1= or =0= | When set to perl-true, macros in the generator will be expanded. Note, that generators outside of [[%SYSTEMWEB%.%HOMETOPIC%][%SYSTEMWEB%]] will need to be white-listed in configure. |
 | =FormGenerator_Disabled= | =1= or =0= | Set this to perl-true (eg. =1=) to deactivate this rule. |
 
----+++ =@REMOVE=
+---+++ =@REMOVE= and =@REPLACE=
 
 If you set a setting or field type to =@REMOVE=, the field/setting will be removed.
+
+If you just want to replace a field without affecting it's position, set =@REPLACE= as an attribute. Make sure, there is another generator for this field - so there is a field to replace in the first place!
 
 ---+++ Customization / =ExtraFields=
 
