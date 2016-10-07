@@ -1,6 +1,6 @@
 %TMPL:INCLUDE{"view"}%
 
-%TMPL:DEF{"content"}%%TMPL:P{"FormGeneratorPreferences"}%%TEXT%
+%TMPL:DEF{"content"}%%TMPL:P{"originalForm"}%%TMPL:P{"FormGeneratorPreferences"}%%TEXT%
 
 %MAKETEXT{"This is an ExtraFieldsForm for [_1]." arg1="[[%BASEWEB%.%SUBST{text="%BASETOPIC%" pattern="ExtraFields\d\d?$" format=""}%]]"}%
 
@@ -25,3 +25,13 @@
 <tr><td>%MAKETEXT{"Order"}%</td><td>%FormGenerator_Order{default="0"}%</td></tr>
 <tr><td>%MAKETEXT{"Disabled"}%</td><td><input type="checkbox" disabled="disabled" %IF{"%FormGenerator_Disabled{default="0"}%" then="checked=\"checked\""}% /></td></tr>
 </tbody></table>%TMPL:END%
+
+%TMPL:DEF{"originalForm"}%%TWISTY{showlink="%MAKETEXT{"Show current form (rendered)"}%" hidelink="%MAKETEXT{"Hide current form (rendered)"}%"}%<div style="border-left: 3px solid #E5E0D5; padding-left: 5px; height: 200px; overflow: auto;">
+%INCLUDE{"%BASEWEB%.%SUBST{text="%TOPIC%" pattern="ExtraFields\d+$" format=""}%"}%
+</div>
+%ENDTWISTY%
+%TWISTY{showlink="%MAKETEXT{"Show current form (TML)"}%" hidelink="%MAKETEXT{"Hide current form (TML)"}%"}%<div style="border-left: 3px solid #E5E0D5; padding-left: 5px; height: 200px; overflow: auto;">
+<pre><literal>%SUBST{topic="%BASEWEB%.%SUBST{text="%TOPIC%" pattern="ExtraFields\d+$" format=""}%" pattern="([%*_-])" format="$1<nop>"}%</literal></pre>
+</div>
+%ENDTWISTY%
+%TMPL:END%
