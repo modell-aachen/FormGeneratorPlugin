@@ -11,8 +11,12 @@ $Foswiki::cfg{Extensions}{FormGeneratorPlugin}{allowExpand} = [];
 $Foswiki::cfg{Extensions}{FormGeneratorPlugin}{Condition} = '%GETWORKFLOWROW{approved}%';
 
 # **STRING**
+# This group is used as %<nop>KeyUserGroup% in <em>AllowExtraFields</em> and defaults to <em>KeyUserGroup</em>
+$Foswiki::cfg{Extensions}{FormGeneratorPlugin}{KeyUserGroup} = 'KeyUserGroup';
+
+# **STRING**
 # Groups and people, that are allowed to create ExtraFields topics.
-# Defaults to <pre>%<nop>IF{"'%<nop>WORKFLOWMETA%'=''" then="KeyUserGroup" else="LOGGEDIN"}%</pre>
+# Defaults to <pre>%<nop>IF{"'%<nop>WORKFLOWMETA%'=''" then="%<nop>%KeyUserGroup%" else="LOGGEDIN"}%</pre>
 $Foswiki::cfg{Extensions}{FormGeneratorPlugin}{AllowExtraFields} = '';
 
 # **PERL**

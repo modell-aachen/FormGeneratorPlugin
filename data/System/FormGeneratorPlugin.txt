@@ -69,6 +69,8 @@ You can create extra rules on a per-web and per-form level. They are topics with
 
 Each extra-rule does have a priority and a position, however no group (it belongs to a form) and no !SourceTopicForm.
 
+Only members of the =KeyUserGroup= can create new generators. If a generator is put under a workflow, only approved topics will be taken into account. If you want =KeyUserGroup= to be any other group or people, you can set this in configure.
+
 ---+++ Escapes
 
 There are some special escapes, do make life easier when using the expand macro.
