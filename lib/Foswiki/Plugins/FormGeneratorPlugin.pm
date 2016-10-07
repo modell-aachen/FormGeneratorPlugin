@@ -54,6 +54,9 @@ sub initPlugin {
     Foswiki::Func::registerTagHandler(
         'FORMGENERATORS', \&_tagFORMGENERATORS );
 
+    Foswiki::Func::registerTagHandler(
+        'MAYCREATEFORMGENERATORS', \&_tagMAYCREATEFORMGENERATORS );
+
     # Plugin correctly initialized
     return 1;
 }
@@ -221,6 +224,20 @@ sub _tagFORMGENERATORS {
         push @result, "$rule " . (_checkUseGenerator($meta) ? 'used' : 'unused');
     }
     return join(',', @result);
+}
+
+sub _tagMAYCREATEFORMGENERATORS {
+    my ( $session, $attributes, $topic, $web ) = @_;
+
+    return 0 unless $topic =~ m#Form$#;
+
+    my $extra = $topic . 'ExtraFields9999999'; # hmm...in theory this could collide with some mad-man's customizing...
+    my $meta = Foswiki::Meta->new($session, $web, $extra);
+    # XXX this is valid for the template provided with the plugin. Since it
+    # currently can not be modified, I guess that's OK ... still don't like it
+    $meta->put('PREFERENCE', { name => 'WORKFLOW', value => '' });
+
+    return _mayEditTopic($web, $extra, $meta) ? 1 : 0;
 }
 
 # Manages topic changes.
@@ -566,6 +583,8 @@ sub _generate {
         my %seenHeaders = ();
         my @collectedPrefs = ();
         my @collectedReplaceFields = ();
+        my %haveAppRule = ();
+        my %haveAppPref = ();
 
         my @usedRules = ();
 
@@ -575,6 +594,7 @@ sub _generate {
             my $ruleTopic = $ruleMeta->topic();
             my $rulePrio = $ruleMeta->getPreference('FormGenerator_Priority') || 0;
             my $ruleOrder = $ruleMeta->getPreference('FormGenerator_Order') || 0;
+            my $appControlled = $ruleMeta->getPreference('FormGenerator_AppControlled');
 
             push @usedRules, "$ruleWeb.$ruleTopic";
 
@@ -595,6 +615,9 @@ sub _generate {
 
             my ($columns, $fields, $prefs) = _parseFormDefinition($rule);
             while (my ($k, $v) = each(%$prefs)) {
+                if($appControlled) {
+                    $haveAppPref{$k} = 1;
+                }
                 push @collectedPrefs, [$rulePrio, "$ruleWeb.$ruleTopic", $ruleOrder, $k, $v];
             }
 
@@ -609,6 +632,9 @@ sub _generate {
             }
 
             foreach my $field (@$fields) {
+                if($appControlled || $ruleWeb eq $Foswiki::cfg{SystemWebName}) {
+                    $haveAppRule{$field->{name}} = 1;
+                }
                 if (defined $field->{attributes} && $field->{attributes} =~ m#\@REPLACE\b#) {
                     $field->{attributes} =~ s#\s*\@REPLACE\s*# #;
                     push(@collectedReplaceFields, [$rulePrio, "$ruleWeb.$ruleTopic", $ruleOrder, $field->{name}, $field]);
@@ -623,11 +649,28 @@ sub _generate {
         # header
         my $formText = '| ' . join(' | ', map { "*$_*" } @collectedHeaders) . " |\n";
 
+        # Putting all data into json for the javascript.
+        # The data is organized in tables; every rule has a row, the
+        # corresponding ...Headers will tell the meaning of the columns.
+        #
+        # It would be easier to simply put this into objects, but
+        # to_json({ a => 1, b => 2 }) can be { a:1, b:1 } or { b:1, a:1 }
+        # however we only want to save, when the topic has actually changed!
+        # Thus we use this construct, because with arrays the result is fixed.
+        my $jsonFieldsHeaders = ['name', 'priority', 'order', 'generator', 'text'];
+        my $jsonFields = [];
+        my $jsonFieldsRemoved = [];
+        my $jsonPrefs = [];
+        my $jsonPrefsHeaders = ['name', 'priority', 'generator', 'text'];
+        my $jsonPrefsRemoved = [];
+
         # form
         my @generatedRules = _prioritizedUnique(\@collectedFields);
         my @generatedReplaceRules = _prioritizedUnique(\@collectedReplaceFields);
         foreach my $field ( @generatedRules ) {
             if ($field->[4]{type} eq '@REMOVE') {
+                # remember only
+                push @$jsonFieldsRemoved, [$field->[4]{name}, $field->[0], $field->[2], $field->[1], ''];
                 next;
             }
 
@@ -643,7 +686,11 @@ sub _generate {
             }
 
             # build the string
-            $formText .= '| ' . join(' | ', @outputFields) . " |\n";
+            my $line = '| ' . join(' | ', @outputFields) . " |\n";
+            $formText .= $line;
+
+            # remember
+            push @$jsonFields, [$field->[4]{name}, $field->[0], $field->[2], $field->[1], $line];
         }
 
         # extra stuff
@@ -652,16 +699,34 @@ sub _generate {
             $formText .= "\n";
             for my $pref ( sort { $a->[3] cmp $b->[3] } @generatedPrefs ) {
                 if ( $pref->[4] eq '@REMOVE' ) {
+                    # remember only
+                    push @$jsonPrefsRemoved, [$pref->[3], $pref->[0], $pref->[1], ''];
                     next;
                 }
-                $formText .= "   * Set $pref->[3] = $pref->[4]\n";
+                my $setting = "$pref->[3] = $pref->[4]";
+                $formText .= "   * Set $setting\n";
+
+                # remember
+                push @$jsonPrefs, [$pref->[3], $pref->[0], $pref->[1], $setting];
             }
         }
 
         # footer / view-template / mark as generated / ACLs / remember rules
-        $formText = '%RED%%MAKETEXT{"This form has been created by FormGeneratorPlugin, <b>do not modify</b>!"}%%ENDCOLOR%'."\n\n$formText";
-        $formText .= "\n\n\%RED\%<b>ERRORS:</b>\n\n$errors\%ENDCOLOR\%" if $errors;
-        $formText .= "\n<!--\n   * Local VIEW_TEMPLATE = FormGeneratorGeneratedFormView\n-->\n";
+        my @textParts = ();
+        push @textParts, ('%RED%%MAKETEXT{"This form has been created by FormGeneratorPlugin, <b>do not modify</b>!"}%%ENDCOLOR%'."\n\n", $formText);
+        push @textParts, ("\n\n\%RED\%<b>ERRORS:</b>\n\n", $errors, "\%ENDCOLOR\%") if $errors;
+        push @textParts, ("\n<div class='foswikiHidden rulesHeadersJson'><verbatim>", to_json($jsonFieldsHeaders), "</verbatim></div>\n");
+        push @textParts, ("\n<div class='foswikiHidden rulesJson'><verbatim>", to_json($jsonFields), "</verbatim></div>\n");
+        push @textParts, ("\n<div class='foswikiHidden rulesRemovedJson'><verbatim>", to_json($jsonFieldsRemoved), "</verbatim></div>\n");
+        push @textParts, ("\n<div class='foswikiHidden rulesAppControlledJson'><verbatim>", to_json(\%haveAppRule), "</verbatim></div>\n");
+        push @textParts, ("\n<div class='foswikiHidden prefsJson'><verbatim>", to_json($jsonPrefs), "</verbatim></div>\n");
+        push @textParts, ("\n<div class='foswikiHidden prefsHeadersJson'><verbatim>", to_json($jsonPrefsHeaders), "</verbatim></div>\n");
+        push @textParts, ("\n<div class='foswikiHidden prefsRemovedJson'><verbatim>", to_json($jsonPrefsRemoved), "</verbatim></div>\n");
+        push @textParts, ("\n<div class='foswikiHidden prefsAppControlledJson'><verbatim>", to_json(\%haveAppPref), "</verbatim></div>\n");
+        push @textParts, ("\n<!--\n   * Local VIEW_TEMPLATE = FormGeneratorGeneratedFormView\n-->\n");
+
+        $formText = join('', @textParts);
+
         $formMeta->putKeyed('PREFERENCE', {type => 'Set', name => 'FormGenerator_AUTOGENERATED', title => 'FormGenerator_AUTOGENERATED' , value => 1} );
         $formMeta->putKeyed('PREFERENCE', {type => 'Set', name => 'WORKFLOW', title => 'WORKFLOW' , value => ''} );
         $formMeta->putKeyed('PREFERENCE', {type => 'Set', name => 'ALLOWTOPICCHANGE', title => 'ALLOWTOPICCHANGE' , value => 'AdminGroup'} );

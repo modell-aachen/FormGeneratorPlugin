@@ -8,3 +8,6 @@ data/System/FormGeneratorManagerViewTemplate.txt 0644
 lib/Foswiki/Plugins/FormGeneratorPlugin.pm 0444 Perl module
 lib/Foswiki/Plugins/FormGeneratorPlugin/Config.spec 0444 Configuration
 locale/FormGeneratorPlugin/de.po 0664
+pub/System/FormGeneratorPlugin/generatedformview.css 0644
+pub/System/FormGeneratorPlugin/generatedformview.js 0644
+pub/System/FormGeneratorPlugin/jsi18n.de.js 0644

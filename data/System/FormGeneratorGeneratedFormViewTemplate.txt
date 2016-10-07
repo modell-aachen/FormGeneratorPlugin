@@ -2,12 +2,20 @@
 
 %TMPL:DEF{"content"}%%TEXT%
 
-%BUTTON{"Create ExtraFieldsTopic"
-   href="%SCRIPTURL{edit}%/%WEB%/%TOPIC%ExtraFieldsAUTOINC1?templatetopic=%SYSTEMWEB%.FormGeneratorExtraFieldsTemplate;t=%GMTIME{"$epoch"}%;nowysiwyg=1"
-}%
+%IF{"$MAYCREATEFORMGENERATORS" then="$percentTMPL:P{createbutton}$percent"}%
 
 %IF{"istopic '%BASEWEB%.%BASETOPIC%Manager'" then="%MAKETEXT{"This form is managed by [_1]." args="[[%BASEWEB%.%BASETOPIC%Manager]]"}%"}%<!-- -->
 
 %MAKETEXT{"Generators for this form:"}%
 %FORMATLIST{"%FORMGENERATORS{"%QUERY{"'%BASEWEB%.%BASETOPIC%Manager'/META:PREFERENCE[name='FormGenerator_Group'].value"}%" form="%BASEWEB%.%BASETOPIC%"}%" pattern="(.*) (used|unused)" format="   * $percentIF{\"'$2'='used'\" then=\"[[$1]]\" else=\"[[$1][<em>$1 %MAKETEXT{"(not used)"}%</em>]]\"}$percent" separator="$n"}%
 %TMPL:END%
+
+%TMPL:DEF{"script:skinbase"}%%TMPL:PREV%%IF{"$MAYCREATEFORMGENERATORS" then="$percentTMPL:P{script:skinbase:extra}$percent"}%%TMPL:END%
+
+%TMPL:DEF{"script:skinbase:extra"}%%TMPL:P{"LIBJS" id="FormGeneratorPlugin/generatedformview" requires="JQUERYPLUGIN::FOSWIKI,%JSI18NID%"}%%JSI18N{"FormGeneratorPlugin"}%%ADDTOZONE{"head" id="generatedformcss" text="<link rel='stylesheet' href='%PUBURLPATH%/%SYSTEMWEB%/FormGeneratorPlugin/generatedformview.css' media='all' type='text/css' />"}%%TMPL:END%
+
+%{ XXX template not configurable }%
+%TMPL:DEF{"createbutton"}%%BUTTON{"Create ExtraFieldsTopic"
+   href="%SCRIPTURL{edit}%/%WEB%/%TOPIC%ExtraFieldsAUTOINC1?templatetopic=%SYSTEMWEB%.FormGeneratorExtraFieldsTemplate;t=%GMTIME{"$epoch"}%;nowysiwyg=1"
+}%%TMPL:END%
+

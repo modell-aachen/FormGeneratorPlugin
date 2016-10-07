@@ -1,0 +1,31 @@
+.FormGeneratorStatus {
+    border-radius: 3px;
+    padding: 2px 3px;
+    text-align: center;
+}
+.FormGeneratorStatus.notmodified {
+    background-color: #84BB2E;
+}
+.FormGeneratorStatus.customized {
+    background-color: #E2AF19;
+}
+.FormGeneratorStatus.custom {
+    background-color: #E2AF19;
+}
+.FormGeneratorStatus.removed {
+    background-color: #D83314;
+}
+.FormGeneratorRemoved {
+    font-style: italic;
+}
+tr.FormGeneratorSep td {
+    background-color: #7F7B71;
+    min-height: 5px;
+}
+li.FormGeneratorSep {
+    background-color: #7F7B71;
+    margin-top: 2px;
+    margin-bottom: 2px;
+    min-height: 5px;
+    list-style: none;
+}
