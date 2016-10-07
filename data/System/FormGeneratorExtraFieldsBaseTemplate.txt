@@ -1,0 +1,10 @@
+%TMPL:DEF{"originalForm"}%%TWISTY{showlink="%MAKETEXT{"Show current form (rendered)"}%" hidelink="%MAKETEXT{"Hide current form (rendered)"}%"}%<div style="border-left: 3px solid #E5E0D5; padding-left: 5px; height: 200px; overflow: auto;">
+%INCLUDE{"%BASEWEB%.%SUBST{text="%TOPIC%" pattern="ExtraFields(?:AUTOINC)?\d+$" format=""}%"}%
+</div>
+%ENDTWISTY%
+%TWISTY{showlink="%MAKETEXT{"Show current form (TML)"}%" hidelink="%MAKETEXT{"Hide current form (TML)"}%"}%<div style="border-left: 3px solid #E5E0D5; padding-left: 5px; height: 200px; overflow: auto;">
+<pre><literal>%SUBST{topic="%BASEWEB%.%SUBST{text="%TOPIC%" pattern="ExtraFields(?:AUTOINC)?\d+$" format=""}%" pattern="([%*_-])" format="$1<nop>"}%</literal></pre>
+</div>
+%ENDTWISTY%
+%TMPL:END%
+
