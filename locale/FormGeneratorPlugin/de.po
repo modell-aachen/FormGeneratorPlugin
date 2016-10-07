@@ -37,3 +37,33 @@ msgstr "Nicht berechtigt %1 zu expandieren!"
 msgid "This form has been created by FormGeneratorPlugin, <b>do not modify</b>!"
 msgstr "Diese Form wurde durch das FormGeneratorPlugin erstellt, <b>nicht bearbeiten</b>!"
 
+msgid "description"
+msgstr "Beschreibung"
+
+msgid "Disabled"
+msgstr "Deaktiviert"
+
+msgid "Generators for this form:"
+msgstr "Generatoren für dieses Form:"
+
+msgid "Hide current form (rendered)"
+msgstr "Aktuelles Form verstecken (gezeichnet)"
+
+msgid "Hide current form (TML)"
+msgstr "Aktuelles Form verstecken (TML)"
+
+msgid "(not used)"
+msgstr "(nicht benutzt)"
+
+msgid "Order"
+msgstr "Reihenfolge"
+
+msgid "Priority"
+msgstr "Priorität"
+
+msgid "Show current form (rendered)"
+msgstr "Aktuelles Form anzeigen (gezeichnet)"
+
+msgid "Show current form (TML)"
+msgstr "Aktuelles Form anzeigen (TML)"
+
