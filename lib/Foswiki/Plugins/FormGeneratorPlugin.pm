@@ -210,7 +210,6 @@ sub _tagFORMGENERATORS {
         my ($web, $topic) = Foswiki::Func::normalizeWebTopicName(undef, $form);
         my $customization = $topic."ExtraFields";
         my $extraIdx = 0;
-        push @rules, "$web.$customization$extraIdx" if Foswiki::Func::topicExists($web, $customization . $extraIdx);
         while (Foswiki::Func::topicExists($web, $customization . ++$extraIdx)) {
             push @rules, "$web.$customization$extraIdx";
         }
