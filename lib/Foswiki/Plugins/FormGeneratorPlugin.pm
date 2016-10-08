@@ -732,7 +732,7 @@ sub _generate {
         $formMeta->putKeyed('PREFERENCE', {type => 'Set', name => 'DISPLAYCOMMENTS', title => 'DISPLAYCOMMENTS' , value => 'off'} );
         $formMeta->putKeyed('PREFERENCE', {type => 'Set', name => 'UsedRules', title => 'UsedRules', value => join(',', @usedRules)});
 
-        if($oldText ne $formText) { # TODO: we will not notice, when preferences changed, however this is unlikely to happen without text changes
+        if((!$oldText) || ($oldText ne $formText)) { # TODO: we will not notice, when preferences changed, however this is unlikely to happen without text changes
             $formMeta->text($formText);
             $formMeta->save(dontlog => 1, minor => 1);
         }
