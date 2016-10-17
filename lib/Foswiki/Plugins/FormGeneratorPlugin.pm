@@ -565,7 +565,13 @@ sub _generate {
 
         my ($formManagerMeta) = Foswiki::Func::readTopic($web, $formManagerTopic);
         my $customization = $formTopic."ExtraFields";
-        my $formRules = [@{$groupdata{$formManagerMeta->getPreference('FormGenerator_Group')}}];
+        my $formGeneratorGroup = $formManagerMeta->getPreference('FormGenerator_Group');
+        my $formRules;
+        if($formGeneratorGroup && $groupdata{$formGeneratorGroup}) {
+            $formRules = [@{$groupdata{$formGeneratorGroup}}];
+        } else {
+            $formRules = [];
+        }
 
         my $extraIdx = 0;
         while (Foswiki::Func::topicExists($formMeta->web(), $customization . ++$extraIdx)) {
