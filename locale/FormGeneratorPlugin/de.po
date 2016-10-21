@@ -19,6 +19,9 @@ msgstr ""
 msgid "This is the manager for %1. It acts on the group '%2'."
 msgstr "Das ist der Manager für %1. Es reagiert auf die Gruppe '%2'."
 
+msgid "This is an ExtraFieldsForm for %1."
+msgstr "Dies ist eine ExtraFieldsFrom für %1."
+
 msgid "This generator is part of an app, please do not modify!"
 msgstr "Dieser Generator ist Teil einer App, bitte nicht bearbeiten!"
 
@@ -33,4 +36,34 @@ msgstr "Nicht berechtigt %1 zu expandieren!"
 
 msgid "This form has been created by FormGeneratorPlugin, <b>do not modify</b>!"
 msgstr "Diese Form wurde durch das FormGeneratorPlugin erstellt, <b>nicht bearbeiten</b>!"
+
+msgid "description"
+msgstr "Beschreibung"
+
+msgid "Disabled"
+msgstr "Deaktiviert"
+
+msgid "Generators for this form:"
+msgstr "Generatoren für dieses Form:"
+
+msgid "Hide current form (rendered)"
+msgstr "Aktuelles Form verstecken (gezeichnet)"
+
+msgid "Hide current form (TML)"
+msgstr "Aktuelles Form verstecken (TML)"
+
+msgid "(not used)"
+msgstr "(nicht benutzt)"
+
+msgid "Order"
+msgstr "Reihenfolge"
+
+msgid "Priority"
+msgstr "Priorität"
+
+msgid "Show current form (rendered)"
+msgstr "Aktuelles Form anzeigen (gezeichnet)"
+
+msgid "Show current form (TML)"
+msgstr "Aktuelles Form anzeigen (TML)"
 

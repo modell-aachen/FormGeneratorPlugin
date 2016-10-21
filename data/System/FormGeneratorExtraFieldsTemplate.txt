@@ -1,0 +1,15 @@
+| *name* | *type* | *size* | *values* | *description* | *attributes* |
+
+
+<verbatim>
+| Example | text | 50 |  | %MAKETEXT{"description"}% | M |
+</verbatim>
+
+
+%META:PREFERENCE{name="FormGenerator_Order" title="FormGenerator_Order" type="Set" value="1"}%
+%META:PREFERENCE{name="FormGenerator_Priority" title="FormGenerator_Priority" type="Set" value="0"}%
+%META:PREFERENCE{name="EDIT_TEMPLATE" title="EDIT_TEMPLATE" type="Set" value="FormGeneratorExtraFieldsEdit"}%
+%META:PREFERENCE{name="VIEW_TEMPLATE" title="VIEW_TEMPLATE" type="Set" value="FormGeneratorExtraFieldsView"}%
+%META:PREFERENCE{name="EarlySetPref" title="EarlySetPref" type="Set" value="%22WORKFLOW=%22"}%
+%META:PREFERENCE{name="SetPref" title="EarlySetPref" type="Set" value="%22WORKFLOW=%22"}%
+%META:PREFERENCE{name="NOWYSIWYG" title="NOWYSIWYG" type="Set" value="1"}%

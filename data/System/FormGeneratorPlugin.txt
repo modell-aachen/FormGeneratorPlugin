@@ -52,20 +52,24 @@ Eg.
 | *Setting* | *values* | *Meaning* |
 | =FormGenerator_TargetFormGroup= | _any text_ | This determines, which group the generator will apply to. |
 | =FormGenerator_SourceTopicForm= | _web.topic_ | This setting is optional. When a topic with this form is saved, the generator will be triggered. |
-| =FormGenerator_Priority= | _any positive or negative number_%BR%=-1=, =0=, =100= | This is the priority for the rule. Defaults to =0=. Higher priorities win. May be negative. |
-| =FormGenerator_Order= | _any positive or negative number_%BR%=-1=, =0=, =100= |  This determines to position in the generated form. Defaults to =0=. Lower value means higher in the generated table. May be negative. |
+| =FormGenerator_Priority= | _any positive or negative number_ %BR% =-1=, =0=, =100= | This is the priority for the rule. Defaults to =0=. Higher priorities win. May be negative. |
+| =FormGenerator_Order= | _any positive or negative number_ %BR% =-1=, =0=, =100= |  This determines to position in the generated form. Defaults to =0=. Lower value means higher in the generated table. May be negative. |
 | =FormGenerator_ExpandMacros= | =1= or =0= | When set to perl-true, macros in the generator will be expanded. Note, that generators outside of [[%SYSTEMWEB%.%HOMETOPIC%][%SYSTEMWEB%]] will need to be white-listed in configure. |
 | =FormGenerator_Disabled= | =1= or =0= | Set this to perl-true (eg. =1=) to deactivate this rule. |
 
----+++ =@REMOVE=
+---+++ =@REMOVE= and =@REPLACE=
 
 If you set a setting or field type to =@REMOVE=, the field/setting will be removed.
+
+If you just want to replace a field without affecting it's position, set =@REPLACE= as an attribute. Make sure, there is another generator for this field - so there is a field to replace in the first place!
 
 ---+++ Customization / =ExtraFields=
 
 You can create extra rules on a per-web and per-form level. They are topics with the form's name suffixed with =ExtraFields= and a number (starting at =1=, consecutive), eg. when you form is called =MyForm=, you might want to create =MyFormExtraFields1= and =MyFormExtraFields2= and so on.
 
 Each extra-rule does have a priority and a position, however no group (it belongs to a form) and no !SourceTopicForm.
+
+Only members of the =KeyUserGroup= can create new generators. If a generator is put under a workflow, only approved topics will be taken into account. If you want =KeyUserGroup= to be any other group or people, you can set this in configure.
 
 ---+++ Escapes
 
