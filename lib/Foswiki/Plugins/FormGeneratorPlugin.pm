@@ -540,6 +540,10 @@ sub _generate {
         $groupdata{$group} = $grp;
         foreach my $ruleTopic ( _getRulesByGroup($group) ) {
             my ($ruleWeb, $ruleTopic) = Foswiki::Func::normalizeWebTopicName(undef, $ruleTopic);
+            unless(Foswiki::Func::topicExists($ruleWeb, $ruleTopic)) {
+                Foswiki::Func::writeWarning("Rule-topic does no longer exist: $ruleWeb.$ruleTopic - please refresh FormGeneratorPlugin");
+                next;
+            }
             my ($ruleMeta, $rule) = Foswiki::Func::readTopic($ruleWeb, $ruleTopic);
             push @$grp, $ruleMeta if _checkUseGenerator($ruleMeta);
 
@@ -552,6 +556,11 @@ sub _generate {
         my ($web, $formManagerTopic) = Foswiki::Func::normalizeWebTopicName(undef, $formManagerWebTopic);
         my $formTopic = $formManagerTopic;
         $formTopic =~ s#Manager$##;
+
+        unless(Foswiki::Func::webExists($web)) {
+            Foswiki::Func::writeWarning("Web for form-topic does no longer exist: $web.$formTopic - please refresh FormGeneratorPlugin");
+            next;
+        }
 
         my ($formMeta, $oldText) = Foswiki::Func::readTopic($web, $formTopic);
 
