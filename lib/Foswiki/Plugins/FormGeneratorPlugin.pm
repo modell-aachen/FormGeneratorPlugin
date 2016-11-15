@@ -798,12 +798,22 @@ sub _parseFormDefinition {
     @columns = map { s/^tooltip(\s*message)?/description/r } @columns;
     my @fields;
     for my $l (@lines) {
-        $l =~ s/^\s*\|\s*//;
-        $l =~ s/[|\s]*$//;
+        unless ( $l =~ s/^\s*\|\s*// ) {
+            Foswiki::Func::writeWarning("Error in form definition: '$l'");
+            last;
+        }
+        unless ( $l =~ s/[|\s]*$// ) {
+            Foswiki::Func::writeWarning("Error in form definition: '$l'");
+            last;
+        }
         my @values = split(/\s*\|\s*/, $l);
         my %fieldHash;
         for (my $i = 0; $i < @values; $i++) {
-            $fieldHash{$columns[$i]} = $values[$i];
+            if ( defined $columns[$i] ) {
+                $fieldHash{$columns[$i]} = $values[$i];
+            } else {
+                Foswiki::Func::writeWarning("Error in form definition: wrong number of entries in '$l'");
+            }
         }
         push @fields, \%fieldHash;
     }
