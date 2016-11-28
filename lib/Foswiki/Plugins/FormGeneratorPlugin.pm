@@ -629,9 +629,7 @@ sub _generate {
 
             my ($columns, $fields, $prefs) = _parseFormDefinition($rule);
             while (my ($k, $v) = each(%$prefs)) {
-                if($appControlled) {
-                    $haveAppPref{$k} = 1;
-                }
+                $haveAppPref{$k} = 1;
                 push @collectedPrefs, [$rulePrio, "$ruleWeb.$ruleTopic", $ruleOrder, $k, $v];
             }
 
