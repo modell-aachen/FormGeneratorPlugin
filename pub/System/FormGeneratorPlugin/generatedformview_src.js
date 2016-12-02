@@ -1,8 +1,12 @@
 jQuery(function($) {
     var log = function() {
-        if(window.console) console.log.apply(this, arguments);
-        if(window.console.trace) console.trace();
-    }
+        if(window.console && window.console.log) try {
+            window.console.log.apply(this, arguments);
+            if(window.console.trace) window.console.trace();
+        } catch(e) {
+            // the log.apply can fail on IE/Edge, even when it exists
+        }
+    };
 
     var rules, removedRules, rulesHeader, appControlledRules;
     var prefs, removedPrefs, prefsHeader, appControlledPrefs;

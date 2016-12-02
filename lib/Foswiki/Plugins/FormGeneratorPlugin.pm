@@ -540,6 +540,10 @@ sub _generate {
         $groupdata{$group} = $grp;
         foreach my $ruleTopic ( _getRulesByGroup($group) ) {
             my ($ruleWeb, $ruleTopic) = Foswiki::Func::normalizeWebTopicName(undef, $ruleTopic);
+            unless(Foswiki::Func::topicExists($ruleWeb, $ruleTopic)) {
+                Foswiki::Func::writeWarning("Rule-topic does no longer exist: $ruleWeb.$ruleTopic - please refresh FormGeneratorPlugin");
+                next;
+            }
             my ($ruleMeta, $rule) = Foswiki::Func::readTopic($ruleWeb, $ruleTopic);
             push @$grp, $ruleMeta if _checkUseGenerator($ruleMeta);
 
@@ -552,6 +556,11 @@ sub _generate {
         my ($web, $formManagerTopic) = Foswiki::Func::normalizeWebTopicName(undef, $formManagerWebTopic);
         my $formTopic = $formManagerTopic;
         $formTopic =~ s#Manager$##;
+
+        unless(Foswiki::Func::webExists($web)) {
+            Foswiki::Func::writeWarning("Web for form-topic does no longer exist: $web.$formTopic - please refresh FormGeneratorPlugin");
+            next;
+        }
 
         my ($formMeta, $oldText) = Foswiki::Func::readTopic($web, $formTopic);
 
@@ -620,7 +629,7 @@ sub _generate {
 
             my ($columns, $fields, $prefs) = _parseFormDefinition($rule);
             while (my ($k, $v) = each(%$prefs)) {
-                if($appControlled) {
+                if($appControlled || $ruleWeb eq $Foswiki::cfg{SystemWebName}) {
                     $haveAppPref{$k} = 1;
                 }
                 push @collectedPrefs, [$rulePrio, "$ruleWeb.$ruleTopic", $ruleOrder, $k, $v];
@@ -789,12 +798,22 @@ sub _parseFormDefinition {
     @columns = map { s/^tooltip(\s*message)?/description/r } @columns;
     my @fields;
     for my $l (@lines) {
-        $l =~ s/^\s*\|\s*//;
-        $l =~ s/[|\s]*$//;
+        unless ( $l =~ s/^\s*\|\s*// ) {
+            Foswiki::Func::writeWarning("Error in form definition: '$l'");
+            last;
+        }
+        unless ( $l =~ s/[|\s]*$// ) {
+            Foswiki::Func::writeWarning("Error in form definition: '$l'");
+            last;
+        }
         my @values = split(/\s*\|\s*/, $l);
         my %fieldHash;
         for (my $i = 0; $i < @values; $i++) {
-            $fieldHash{$columns[$i]} = $values[$i];
+            if ( defined $columns[$i] ) {
+                $fieldHash{$columns[$i]} = $values[$i];
+            } else {
+                Foswiki::Func::writeWarning("Error in form definition: wrong number of entries in '$l'");
+            }
         }
         push @fields, \%fieldHash;
     }
