@@ -62,6 +62,24 @@ jQuery(function($) {
 
         rules = objectify(rulesHeader, rulesArray);
         prefs = objectify(prefsHeader, prefsArray);
+
+        // There was a bug, that transmitted appControlledSomething as object
+        // as opposed to an array (which can be sorted).
+        // We now transmit an array, however I just turn it into an object
+        // again instead of changing the code, because it will make handling
+        // old pages simpler.
+        var arrayToObject = function(array) {
+            if(array.constructor == Array) { // new format
+                var obj = {};
+                $.each(array, function(idx, item) {
+                    obj[item] = 1;
+                });
+                return obj;
+            }
+            return array; // old format, do nothing
+        }
+        appControlledPrefs = arrayToObject(appControlledPrefs);
+        appControlledRules = arrayToObject(appControlledRules);
     }
 
     // helpers:
