@@ -726,17 +726,19 @@ sub _generate {
         }
 
         # footer / view-template / mark as generated / ACLs / remember rules
+        # note: only put sorted arrays or strings into to_json, never objects
+        # (because we do not want to re-generate the form if nothing changed)
         my @textParts = ();
         push @textParts, ('%RED%%MAKETEXT{"This form has been created by FormGeneratorPlugin, <b>do not modify</b>!"}%%ENDCOLOR%'."\n\n", $formText);
         push @textParts, ("\n\n\%RED\%<b>ERRORS:</b>\n\n", $errors, "\%ENDCOLOR\%") if $errors;
         push @textParts, ("\n<div class='foswikiHidden rulesHeadersJson'><verbatim>", to_json($jsonFieldsHeaders), "</verbatim></div>\n");
         push @textParts, ("\n<div class='foswikiHidden rulesJson'><verbatim>", to_json($jsonFields), "</verbatim></div>\n");
         push @textParts, ("\n<div class='foswikiHidden rulesRemovedJson'><verbatim>", to_json($jsonFieldsRemoved), "</verbatim></div>\n");
-        push @textParts, ("\n<div class='foswikiHidden rulesAppControlledJson'><verbatim>", to_json(\%haveAppRule), "</verbatim></div>\n");
+        push @textParts, ("\n<div class='foswikiHidden rulesAppControlledJson'><verbatim>", to_json([sort keys %haveAppRule]), "</verbatim></div>\n");
         push @textParts, ("\n<div class='foswikiHidden prefsJson'><verbatim>", to_json($jsonPrefs), "</verbatim></div>\n");
         push @textParts, ("\n<div class='foswikiHidden prefsHeadersJson'><verbatim>", to_json($jsonPrefsHeaders), "</verbatim></div>\n");
         push @textParts, ("\n<div class='foswikiHidden prefsRemovedJson'><verbatim>", to_json($jsonPrefsRemoved), "</verbatim></div>\n");
-        push @textParts, ("\n<div class='foswikiHidden prefsAppControlledJson'><verbatim>", to_json(\%haveAppPref), "</verbatim></div>\n");
+        push @textParts, ("\n<div class='foswikiHidden prefsAppControlledJson'><verbatim>", to_json([sort keys %haveAppPref]), "</verbatim></div>\n");
         push @textParts, ("\n<!--\n   * Local VIEW_TEMPLATE = FormGeneratorGeneratedFormView\n-->\n");
 
         $formText = join('', @textParts);
