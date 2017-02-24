@@ -188,6 +188,28 @@ SEARCH
         $groups->{$rule->{preference_FormGenerator_TargetFormGroup_s}} = 1;
     }
 
+    # handle virtual topics
+    if($Foswiki::Plugins::SESSION->{store}->can('isVirtualTopic')) {
+        my $dbclone = $db;
+        my $virtualize;
+        $virtualize = sub {
+            my ($toVirtualize, $src) = @_;
+            if($Foswiki::Plugins::SESSION->{store}->isVirtualTopic($src)) {
+                my $vWeb = $Foswiki::Plugins::SESSION->{store}->getVirtualWeb($src);
+                my $managers = $dbclone->selectall_arrayref('SELECT webtopic, FormGroup FROM formmanagers WHERE webtopic LIKE ?', {}, "$vWeb%");
+                foreach my $entry ( @$managers ) {
+                    my $manager = $entry->[0];
+                    $manager =~ s#^$vWeb\b#$toVirtualize#g;
+                    $dbclone->do("INSERT OR REPLACE into formmanagers (webtopic, FormGroup) values (?, ?)", {}, $manager, $entry->[1]);
+                }
+                &$virtualize($toVirtualize, $vWeb);
+            }
+        };
+        foreach my $eachWeb ( Foswiki::Func::getListOfWebs() ) {
+            &$virtualize($eachWeb, $eachWeb);
+        }
+    }
+
     # generate
     if($query->param('generate')) {
         my @collectedGroups = keys %$groups;
@@ -751,6 +773,11 @@ sub _generate {
 
         if((!$oldText) || ($oldText ne $formText)) { # TODO: we will not notice, when preferences changed, however this is unlikely to happen without text changes
             $formMeta->text($formText);
+            if($formMeta->session()->{store}->can('isVirtualTopic')) {
+                $formMeta->session()->{store}->noVirtualTopics(1);
+                $formMeta->save(dontlog => 1, minor => 1);
+                $formMeta->session()->{store}->noVirtualTopics(0);
+            }
             $formMeta->save(dontlog => 1, minor => 1);
         }
     }
