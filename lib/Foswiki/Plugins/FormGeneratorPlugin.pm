@@ -318,8 +318,6 @@ sub _onChange {
             $groups{$group} = 1;
         }
 
-        # virtual topics
-        _virtualizeWebs();
     } elsif ($newTopic =~ /^FormGenerator_/) {
         $groups{$newMeta->getPreference('FormGenerator_TargetFormGroup')} = 1;
     } elsif ($newTopic =~ /FormManager$/) {
