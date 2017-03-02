@@ -230,10 +230,12 @@ sub _tagFORMGENERATORS {
     my $form = $attributes->{form};
     if($form) {
         my ($web, $topic) = Foswiki::Func::normalizeWebTopicName(undef, $form);
-        my $customization = $topic."ExtraFields";
-        my $extraIdx = 0;
-        while (Foswiki::Func::topicExists($web, $customization . ++$extraIdx)) {
-            push @rules, "$web.$customization$extraIdx";
+        for my $extratopic ( qw( ExtraFields LocalExtraFields ) ) {
+            my $customization = "$topic$extratopic";
+            my $extraIdx = 0;
+            while (Foswiki::Func::topicExists($web, $customization . ++$extraIdx)) {
+                push @rules, "$web.$customization$extraIdx";
+            }
         }
     }
 
@@ -305,23 +307,30 @@ sub _onChange {
     my %groups;
 
     if ((not $newTopic) || $newTopic eq 'WebPreferences' || $newTopic eq 'SitePreferences') { # Note: One may create MyWeb.SitePreferences, however not worth the effort
+
+        # update everything
+
+        # collect all groups
         my @allGroups = @{ db()->selectcol_arrayref("SELECT DISTINCT TargetFormGroup from rules") };
         foreach my $group (@allGroups) {
             next unless $group;
             $groups{$group} = 1;
         }
+
+        # virtual topics
+        _virtualizeWebs();
     } elsif ($newTopic =~ /^FormGenerator_/) {
         $groups{$newMeta->getPreference('FormGenerator_TargetFormGroup')} = 1;
     } elsif ($newTopic =~ /FormManager$/) {
         $groups{$newMeta->getPreference('FormGenerator_Group')} = 1;
-    } elsif ($oldTopic && $oldTopic =~ /^(.*Form)ExtraFields\d+$/) {
+    } elsif ($oldTopic && $oldTopic =~ /^(.*Form)(?:Local)?ExtraFields\d+$/) {
         my $formManager = "$1Manager";
         if (Foswiki::Func::topicExists($oldWeb, $formManager)) {
             ($formManager) = Foswiki::Func::readTopic($oldWeb, $formManager);
             my $target = $formManager->getPreference('FormGenerator_Group');
             $groups{$target} = 1 if $target;
         }
-    } elsif ($newTopic =~ /^(.*Form)ExtraFields\d+$/) {
+    } elsif ($newTopic =~ /^(.*Form)(?:Local)?ExtraFields\d+$/) {
         my $formManager = "$1Manager";
         if (Foswiki::Func::topicExists($newWeb, $formManager)) {
             ($formManager) = Foswiki::Func::readTopic($newWeb, $formManager);
@@ -398,7 +407,7 @@ sub _mayEditTopic {
 
     if($topic =~ m#^FormGenerator_#) {
         return scalar grep{$_ eq $web} @{$Foswiki::cfg{Extensions}{FormGeneratorPlugin}{FormGeneratorWebs}};
-    } elsif ($topic =~ m#FormExtraFields\d+$#) {
+    } elsif ($topic =~ m#Form(?:Local)?ExtraFields\d+$#) {
         # XXX: In KVPPlugin we trust. We have no choice, because the
         # expandMacros call will not succeed.
         return 1 if Foswiki::Plugins::KVPPlugin::isStateChange();
@@ -595,7 +604,6 @@ sub _generate {
         }
 
         my ($formManagerMeta) = Foswiki::Func::readTopic($web, $formManagerTopic);
-        my $customization = $formTopic."ExtraFields";
         my $formGeneratorGroup = $formManagerMeta->getPreference('FormGenerator_Group');
         my $formRules;
         if($formGeneratorGroup && $groupdata{$formGeneratorGroup}) {
@@ -604,12 +612,15 @@ sub _generate {
             $formRules = [];
         }
 
-        my $extraIdx = 0;
-        while (Foswiki::Func::topicExists($formMeta->web(), $customization . ++$extraIdx)) {
-            my $currentCustomization = "$customization$extraIdx";
-            my ($customizedMeta, $customizedText) = Foswiki::Func::readTopic($formMeta->web(), $currentCustomization);
+        foreach my $extratopic ( qw( ExtraFields LocalExtraFields ) ) {
+            my $customization = "$formTopic$extratopic";
+            my $extraIdx = 0;
+            while (Foswiki::Func::topicExists($formMeta->web(), $customization . ++$extraIdx)) {
+                my $currentCustomization = "$customization$extraIdx";
+                my ($customizedMeta, $customizedText) = Foswiki::Func::readTopic($formMeta->web(), $currentCustomization);
 
-            push @$formRules, $customizedMeta if _checkUseGenerator($customizedMeta);
+                push @$formRules, $customizedMeta if _checkUseGenerator($customizedMeta);
+            }
         }
 
 

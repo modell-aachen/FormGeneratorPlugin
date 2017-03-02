@@ -3,7 +3,7 @@
 
 %TMPL:DEF{"content"}%%TMPL:P{"originalForm"}%%TMPL:P{"FormGeneratorPreferences"}%%TEXT%
 
-%MAKETEXT{"This is an ExtraFieldsForm for [_1]." arg1="[[%BASEWEB%.%SUBST{text="%BASETOPIC%" pattern="ExtraFields\d\d?$" format=""}%]]"}%
+%MAKETEXT{"This is an ExtraFieldsForm for [_1]." arg1="[[%BASEWEB%.%SUBST{text="%BASETOPIC%" pattern="(?:Local)?ExtraFields\d\d?$" format=""}%]]"}%
 
 %TMPL:P{"SetVariable"}%%TMPL:END%
 
