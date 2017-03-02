@@ -125,6 +125,7 @@ SEARCH
         $forms = { response => { docs => [] } };
         foreach my $form ( @formsArray ) {
             my ($web, $topic) = Foswiki::Func::normalizeWebTopicName(undef, $form);
+            next if $web =~ m#^\Q$Foswiki::cfg{TrashWebName}\E[./]#; # unfortunately SEARCH does not support wildcards in the web parameter
             my ($meta) = Foswiki::Func::readTopic($web, $topic);
             my $doc = {
                 webtopic => "$web.$topic",
@@ -288,7 +289,7 @@ sub _onChange {
         }
     } elsif($oldTopic && $oldTopic =~ m#FormManager$#) {
         $db->do("DELETE from formmanagers WHERE webtopic=?", {}, "$oldWeb.$oldTopic");
-        if($newTopic =~ m#FormManager$# && $newWeb ne $Foswiki::cfg{TrashWebName}) {
+        if($newTopic =~ m#FormManager$# && $newWeb !~ m#^\Q$Foswiki::cfg{TrashWebName}\E(?:[./]|$)#) {
             my $formGroup = $newMeta->getPreference('FormGenerator_Group');
             $db->do("INSERT into formmanagers (webtopic, FormGroup) values (?, ?)", {}, "$newWeb.$newTopic", $formGroup) if $formGroup;
         }
@@ -587,6 +588,8 @@ sub _generate {
         my ($web, $formManagerTopic) = Foswiki::Func::normalizeWebTopicName(undef, $formManagerWebTopic);
         my $formTopic = $formManagerTopic;
         $formTopic =~ s#Manager$##;
+
+        next if $web =~ m#^\Q$Foswiki::cfg{TrashWebName}\E(?:$|/|\.)#; # this _should_ not happen, but seems buggy at the moment
 
         unless(Foswiki::Func::webExists($web)) {
             Foswiki::Func::writeWarning("Web for form-topic does no longer exist: $web.$formTopic - please refresh FormGeneratorPlugin");
