@@ -16,6 +16,6 @@
 
 %{ XXX template not configurable }%
 %TMPL:DEF{"createbutton"}%%BUTTON{"Create ExtraFieldsTopic"
-   href="%SCRIPTURL{edit}%/%WEB%/%TOPIC%ExtraFieldsAUTOINC1?Priority=1;Order=1;templatetopic=%SYSTEMWEB%.FormGeneratorExtraFieldsTemplate;template=FormGeneratorExtraFieldsEdit;t=%GMTIME{"$epoch"}%;nowysiwyg=1"
+   href="%SCRIPTURL{edit}%/%WEB%/%TOPIC%%GETVIRTUALWEB{"%WEB%.%TOPIC%Manager" default="" formatYes="Local" formatNo=""}%ExtraFieldsAUTOINC1?Priority=1;Order=1;templatetopic=%SYSTEMWEB%.FormGeneratorExtraFieldsTemplate;template=FormGeneratorExtraFieldsEdit;t=%GMTIME{"$epoch"}%;nowysiwyg=1"
 }%%TMPL:END%
 

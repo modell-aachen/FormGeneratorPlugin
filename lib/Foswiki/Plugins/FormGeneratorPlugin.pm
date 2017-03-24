@@ -125,6 +125,7 @@ SEARCH
         $forms = { response => { docs => [] } };
         foreach my $form ( @formsArray ) {
             my ($web, $topic) = Foswiki::Func::normalizeWebTopicName(undef, $form);
+            next if $web =~ m#^\Q$Foswiki::cfg{TrashWebName}\E[./]#; # unfortunately SEARCH does not support wildcards in the web parameter
             my ($meta) = Foswiki::Func::readTopic($web, $topic);
             my $doc = {
                 webtopic => "$web.$topic",
@@ -188,6 +189,28 @@ SEARCH
         $groups->{$rule->{preference_FormGenerator_TargetFormGroup_s}} = 1;
     }
 
+    # handle virtual topics
+    if($Foswiki::Plugins::SESSION->{store}->can('isVirtualTopic')) {
+        my $dbclone = $db;
+        my $virtualize;
+        $virtualize = sub {
+            my ($toVirtualize, $src) = @_;
+            if($Foswiki::Plugins::SESSION->{store}->isVirtualTopic($src)) {
+                my $vWeb = $Foswiki::Plugins::SESSION->{store}->getVirtualWeb($src);
+                my $managers = $dbclone->selectall_arrayref('SELECT webtopic, FormGroup FROM formmanagers WHERE webtopic LIKE ?', {}, "$vWeb%");
+                foreach my $entry ( @$managers ) {
+                    my $manager = $entry->[0];
+                    $manager =~ s#^$vWeb\b#$toVirtualize#g;
+                    $dbclone->do("INSERT OR REPLACE into formmanagers (webtopic, FormGroup) values (?, ?)", {}, $manager, $entry->[1]);
+                }
+                &$virtualize($toVirtualize, $vWeb);
+            }
+        };
+        foreach my $eachWeb ( Foswiki::Func::getListOfWebs() ) {
+            &$virtualize($eachWeb, $eachWeb);
+        }
+    }
+
     # generate
     if($query->param('generate')) {
         my @collectedGroups = keys %$groups;
@@ -208,10 +231,12 @@ sub _tagFORMGENERATORS {
     my $form = $attributes->{form};
     if($form) {
         my ($web, $topic) = Foswiki::Func::normalizeWebTopicName(undef, $form);
-        my $customization = $topic."ExtraFields";
-        my $extraIdx = 0;
-        while (Foswiki::Func::topicExists($web, $customization . ++$extraIdx)) {
-            push @rules, "$web.$customization$extraIdx";
+        for my $extratopic ( qw( ExtraFields LocalExtraFields ) ) {
+            my $customization = "$topic$extratopic";
+            my $extraIdx = 0;
+            while (Foswiki::Func::topicExists($web, $customization . ++$extraIdx)) {
+                push @rules, "$web.$customization$extraIdx";
+            }
         }
     }
 
@@ -264,7 +289,7 @@ sub _onChange {
         }
     } elsif($oldTopic && $oldTopic =~ m#FormManager$#) {
         $db->do("DELETE from formmanagers WHERE webtopic=?", {}, "$oldWeb.$oldTopic");
-        if($newTopic =~ m#FormManager$# && $newWeb ne $Foswiki::cfg{TrashWebName}) {
+        if($newTopic =~ m#FormManager$# && $newWeb !~ m#^\Q$Foswiki::cfg{TrashWebName}\E(?:[./]|$)#) {
             my $formGroup = $newMeta->getPreference('FormGenerator_Group');
             $db->do("INSERT into formmanagers (webtopic, FormGroup) values (?, ?)", {}, "$newWeb.$newTopic", $formGroup) if $formGroup;
         }
@@ -283,23 +308,28 @@ sub _onChange {
     my %groups;
 
     if ((not $newTopic) || $newTopic eq 'WebPreferences' || $newTopic eq 'SitePreferences') { # Note: One may create MyWeb.SitePreferences, however not worth the effort
+
+        # update everything
+
+        # collect all groups
         my @allGroups = @{ db()->selectcol_arrayref("SELECT DISTINCT TargetFormGroup from rules") };
         foreach my $group (@allGroups) {
             next unless $group;
             $groups{$group} = 1;
         }
+
     } elsif ($newTopic =~ /^FormGenerator_/) {
         $groups{$newMeta->getPreference('FormGenerator_TargetFormGroup')} = 1;
     } elsif ($newTopic =~ /FormManager$/) {
         $groups{$newMeta->getPreference('FormGenerator_Group')} = 1;
-    } elsif ($oldTopic && $oldTopic =~ /^(.*Form)ExtraFields\d+$/) {
+    } elsif ($oldTopic && $oldTopic =~ /^(.*Form)(?:Local)?ExtraFields\d+$/) {
         my $formManager = "$1Manager";
         if (Foswiki::Func::topicExists($oldWeb, $formManager)) {
             ($formManager) = Foswiki::Func::readTopic($oldWeb, $formManager);
             my $target = $formManager->getPreference('FormGenerator_Group');
             $groups{$target} = 1 if $target;
         }
-    } elsif ($newTopic =~ /^(.*Form)ExtraFields\d+$/) {
+    } elsif ($newTopic =~ /^(.*Form)(?:Local)?ExtraFields\d+$/) {
         my $formManager = "$1Manager";
         if (Foswiki::Func::topicExists($newWeb, $formManager)) {
             ($formManager) = Foswiki::Func::readTopic($newWeb, $formManager);
@@ -376,7 +406,7 @@ sub _mayEditTopic {
 
     if($topic =~ m#^FormGenerator_#) {
         return scalar grep{$_ eq $web} @{$Foswiki::cfg{Extensions}{FormGeneratorPlugin}{FormGeneratorWebs}};
-    } elsif ($topic =~ m#FormExtraFields\d+$#) {
+    } elsif ($topic =~ m#Form(?:Local)?ExtraFields\d+$#) {
         # XXX: In KVPPlugin we trust. We have no choice, because the
         # expandMacros call will not succeed.
         return 1 if Foswiki::Plugins::KVPPlugin::isStateChange();
@@ -557,6 +587,8 @@ sub _generate {
         my $formTopic = $formManagerTopic;
         $formTopic =~ s#Manager$##;
 
+        next if $web =~ m#^\Q$Foswiki::cfg{TrashWebName}\E(?:$|/|\.)#; # this _should_ not happen, but seems buggy at the moment
+
         unless(Foswiki::Func::webExists($web)) {
             Foswiki::Func::writeWarning("Web for form-topic does no longer exist: $web.$formTopic - please refresh FormGeneratorPlugin");
             next;
@@ -573,7 +605,6 @@ sub _generate {
         }
 
         my ($formManagerMeta) = Foswiki::Func::readTopic($web, $formManagerTopic);
-        my $customization = $formTopic."ExtraFields";
         my $formGeneratorGroup = $formManagerMeta->getPreference('FormGenerator_Group');
         my $formRules;
         if($formGeneratorGroup && $groupdata{$formGeneratorGroup}) {
@@ -582,12 +613,15 @@ sub _generate {
             $formRules = [];
         }
 
-        my $extraIdx = 0;
-        while (Foswiki::Func::topicExists($formMeta->web(), $customization . ++$extraIdx)) {
-            my $currentCustomization = "$customization$extraIdx";
-            my ($customizedMeta, $customizedText) = Foswiki::Func::readTopic($formMeta->web(), $currentCustomization);
+        foreach my $extratopic ( qw( ExtraFields LocalExtraFields ) ) {
+            my $customization = "$formTopic$extratopic";
+            my $extraIdx = 0;
+            while (Foswiki::Func::topicExists($formMeta->web(), $customization . ++$extraIdx)) {
+                my $currentCustomization = "$customization$extraIdx";
+                my ($customizedMeta, $customizedText) = Foswiki::Func::readTopic($formMeta->web(), $currentCustomization);
 
-            push @$formRules, $customizedMeta if _checkUseGenerator($customizedMeta);
+                push @$formRules, $customizedMeta if _checkUseGenerator($customizedMeta);
+            }
         }
 
 
@@ -751,6 +785,11 @@ sub _generate {
 
         if((!$oldText) || ($oldText ne $formText)) { # TODO: we will not notice, when preferences changed, however this is unlikely to happen without text changes
             $formMeta->text($formText);
+            if($formMeta->session()->{store}->can('isVirtualTopic')) {
+                $formMeta->session()->{store}->noVirtualTopics(1);
+                $formMeta->save(dontlog => 1, minor => 1);
+                $formMeta->session()->{store}->noVirtualTopics(0);
+            }
             $formMeta->save(dontlog => 1, minor => 1);
         }
     }

@@ -63,9 +63,9 @@ If you set a setting or field type to =@REMOVE=, the field/setting will be remov
 
 If you just want to replace a field without affecting it's position, set =@REPLACE= as an attribute. Make sure, there is another generator for this field - so there is a field to replace in the first place!
 
----+++ Customization / =ExtraFields=
+---+++ Customization / =ExtraFields= / =LocalExtraFields=
 
-You can create extra rules on a per-web and per-form level. They are topics with the form's name suffixed with =ExtraFields= and a number (starting at =1=, consecutive), eg. when you form is called =MyForm=, you might want to create =MyFormExtraFields1= and =MyFormExtraFields2= and so on.
+You can create extra rules on a per-web and per-form level. They are topics with the form's name suffixed with =ExtraFields= and a number (starting at =1=, consecutive), eg. when you form is called =MyForm=, you might want to create =MyFormExtraFields1= and =MyFormExtraFields2= and so on. If your manager is a virtual topic, the suffix =LocalExtraField= should be used instead.
 
 Each extra-rule does have a priority and a position, however no group (it belongs to a form) and no !SourceTopicForm.
 
@@ -82,9 +82,8 @@ There are some special escapes, do make life easier when using the expand macro.
 
 ---+++ AppManagerPlugin
 
-After you have installed an app via AppManagerPlugin, you must manually index all generators. Use any of these links:
-   * [[%SCRIPTURL{rest}%/FormGeneratorPlugin/index?generate=1][index and generate with solr (as admin user)]]
-   * [[%SCRIPTURL{rest}%/FormGeneratorPlugin/index?mode=nosolr;generate=1][index and generate without solr (as admin user)]]
+After you have installed an app via AppManagerPlugin, you must manually index all generators. Use this link:
+   * [[%SCRIPTURL{rest}%/FormGeneratorPlugin/index?mode=nosolr;generate=1][index and generate (as admin user)]]
 
 ---+++ Configure
 
