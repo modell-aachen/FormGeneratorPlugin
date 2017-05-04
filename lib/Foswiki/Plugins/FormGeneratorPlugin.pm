@@ -555,8 +555,10 @@ sub _getRulesByGroup {
 sub _generate {
     my ($groups) = @_;
 
-    # make sure we can read all topics (eg. for %SEARCH{...}%)
-    local $Foswiki::Plugins::SESSION->{user} = 'BaseUserMapping_333';
+    # Creating a new session, so
+    #    * we are admin and can read everything (eg. for %SEARCH{...}%)
+    #    * changed settings take effect and are not chached
+    local $Foswiki::PLugins::SESSION = Foswiki->new('BaseUserMapping_333', undef, undef);
 
     my %groupdata;
 
