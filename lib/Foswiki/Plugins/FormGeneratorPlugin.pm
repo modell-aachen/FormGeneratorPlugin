@@ -231,12 +231,8 @@ sub _tagFORMGENERATORS {
     my $form = $attributes->{form};
     if($form) {
         my ($web, $topic) = Foswiki::Func::normalizeWebTopicName(undef, $form);
-        for my $extratopic ( qw( ExtraFields LocalExtraFields ) ) {
-            my $customization = "$topic$extratopic";
-            my $extraIdx = 0;
-            while (Foswiki::Func::topicExists($web, $customization . ++$extraIdx)) {
-                push @rules, "$web.$customization$extraIdx";
-            }
+        foreach my $topic (Foswiki::Func::getTopicList($web)) {
+            push @rules, "$web.$topic" if $topic =~ /ExtraFields/ || $topic =~ /LocalExtraFields/;  
         }
     }
 
@@ -615,17 +611,12 @@ sub _generate {
             $formRules = [];
         }
 
-        foreach my $extratopic ( qw( ExtraFields LocalExtraFields ) ) {
-            my $customization = "$formTopic$extratopic";
-            my $extraIdx = 0;
-            while (Foswiki::Func::topicExists($formMeta->web(), $customization . ++$extraIdx)) {
-                my $currentCustomization = "$customization$extraIdx";
-                my ($customizedMeta, $customizedText) = Foswiki::Func::readTopic($formMeta->web(), $currentCustomization);
-
-                push @$formRules, $customizedMeta if _checkUseGenerator($customizedMeta);
+        foreach my $topic (Foswiki::Func::getTopicList($formMeta->web())) {
+            if($topic =~ /ExtraFields/ || $topic =~ /LocalExtraFields/) {
+                my ($customizedMeta, $customizedText) = Foswiki::Func::readTopic($formMeta->web(), $topic);
+                push @$formRules, $customizedMeta if _checkUseGenerator($customizedMeta);                
             }
         }
-
 
         my @collectedFields = ();
         my %seenFields = ();
