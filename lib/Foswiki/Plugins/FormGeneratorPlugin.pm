@@ -222,6 +222,34 @@ SEARCH
     return 'OK';
 }
 
+# make sure LocalExtraFields come after ExtraFields and sort numbers numerically
+sub _sortExtraFields {
+    our $a, $b;
+
+    $a =~ m#(.*?)(\d*)$#;
+    my $aLetterrs = $1;
+    my $aDigits = $2;
+
+    $b =~ m#(.*?)(\d*)$#;
+    my $bLetterrs = $1;
+    my $bDigits = $2;
+
+    my $cmp = $a cmp $b;
+    return $cmp if $cmp;
+
+    return $aDigits <=> $bDigits;
+}
+
+sub _getExtraFieldTopics {
+    my ($web, $form) = @_;
+
+    my @rules = ();
+    foreach my $topic (Foswiki::Func::getTopicList($web)) {
+        push @rules, "$web.$topic" if $topic =~ m/^${form}ExtraFields\d*$/ || $topic =~ m/^${form}LocalExtraFields\d*$/;
+    }
+    return sort _sortExtraFields @rules;
+}
+
 sub _tagFORMGENERATORS {
     my ( $session, $attributes, $topic, $web ) = @_;
 
@@ -230,10 +258,8 @@ sub _tagFORMGENERATORS {
 
     my $form = $attributes->{form};
     if($form) {
-        my ($web, $topic) = Foswiki::Func::normalizeWebTopicName(undef, $form);
-        foreach my $topic (Foswiki::Func::getTopicList($web)) {
-            push @rules, "$web.$topic" if $topic =~ /ExtraFields/ || $topic =~ /LocalExtraFields/;
-        }
+        my ($formWeb, $formTopic) = Foswiki::Func::normalizeWebTopicName(undef, $form);
+        push @rules, _getExtraFieldTopics($formWeb, $formTopic);
     }
 
     my @result = ();
@@ -611,11 +637,9 @@ sub _generate {
             $formRules = [];
         }
 
-        foreach my $topic (Foswiki::Func::getTopicList($formMeta->web())) {
-            if($topic =~ /ExtraFields/ || $topic =~ /LocalExtraFields/) {
-                my ($customizedMeta, $customizedText) = Foswiki::Func::readTopic($formMeta->web(), $topic);
-                push @$formRules, $customizedMeta if _checkUseGenerator($customizedMeta);
-            }
+        foreach my $topic (_getExtraFieldTopics($formMeta->web(), $formMeta->topic())) {
+            my ($customizedMeta, $customizedText) = Foswiki::Func::readTopic($formMeta->web(), $topic);
+            push @$formRules, $customizedMeta if _checkUseGenerator($customizedMeta);
         }
 
         my @collectedFields = ();
