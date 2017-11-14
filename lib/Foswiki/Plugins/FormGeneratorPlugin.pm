@@ -224,17 +224,17 @@ SEARCH
 
 # make sure LocalExtraFields come after ExtraFields and sort numbers numerically
 sub _sortExtraFields {
-    our $a, $b;
+    our ($a, $b);
 
     $a =~ m#(.*?)(\d*)$#;
-    my $aLetterrs = $1;
+    my $aLetters = $1;
     my $aDigits = $2;
 
     $b =~ m#(.*?)(\d*)$#;
-    my $bLetterrs = $1;
+    my $bLetters = $1;
     my $bDigits = $2;
 
-    my $cmp = $a cmp $b;
+    my $cmp = $aLetters cmp $bLetters;
     return $cmp if $cmp;
 
     return $aDigits <=> $bDigits;
