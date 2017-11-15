@@ -12,3 +12,5 @@ locale/FormGeneratorPlugin/de.po 0664
 pub/System/FormGeneratorPlugin/generatedformview.css 0644
 pub/System/FormGeneratorPlugin/generatedformview.js 0644
 pub/System/FormGeneratorPlugin/jsi18n.de.js 0644
+test/unit/FormGeneratorPlugin/FormGeneratorPluginSuite.pm 0644
+test/unit/FormGeneratorPlugin/FormGeneratorPluginTests.pm 0644
