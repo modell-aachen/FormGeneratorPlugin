@@ -1,8 +1,11 @@
 | *name* | *type* | *size* | *values* | *description* | *attributes* |
-
+| NewField | text | 50 |  | %MAKETEXT{"description"}% |  |
 
 <verbatim>
-| Example | text | 50 |  | %MAKETEXT{"description"}% | M |
+Example of a new field shown above.
+Important: There must not be an empty line between the table header and the first field definition.
+
+All field types and parameters are documented in System/DataForms and System/MoreFormfieldsPlugin.
 </verbatim>
 
 
