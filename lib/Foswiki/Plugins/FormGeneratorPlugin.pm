@@ -569,6 +569,32 @@ sub _getRulesByGroup {
     return @{ db()->selectcol_arrayref("SELECT DISTINCT webtopic FROM rules WHERE TargetFormGroup=?", {}, $group) };
 }
 
+sub getExtraFieldsFrom {
+    my ( $group ) = @_;
+    my $formManagers = _getManagersByGroup( [ $group ] );
+    my @extraFields;
+    foreach my $formManagerWebTopic ( @$formManagers ) {
+        push @extraFields, _getExtraFieldTopics( _getFormOf( $formManagerWebTopic ) );
+    }
+    return @extraFields;
+}
+
+sub _getFormOf {
+    my ( $formManagerWebTopic ) = @_;
+    my ( $web, $formTopic ) = Foswiki::Func::normalizeWebTopicName(undef, $formManagerWebTopic);
+    $formTopic =~ s#Manager$##;
+    return ( $web, $formTopic );
+}
+
+sub getTableData {
+    my ( $web, $topic ) = @_;
+    my ( $meta, $content ) = Foswiki::Func::readTopic( $web, $topic );
+    my ( $columns, $fields, $prefs ) = _parseFormDefinition( $content );
+
+    return ( $columns, $fields, $prefs );
+}
+
+
 # Generates (and saves) all forms affected by the groups.
 # The forms are only saved, if they actually changed.
 #
@@ -584,7 +610,6 @@ sub _generate {
 
     my %groupdata;
 
-    my $affectedForms = _getManagersByGroup($groups);
 
     my $errors = '';
 
@@ -605,11 +630,11 @@ sub _generate {
     }
 
     # build the actual form
+    my $affectedForms = _getManagersByGroup($groups);
 
     foreach my $formManagerWebTopic ( @$affectedForms ) {
-        my ($web, $formManagerTopic) = Foswiki::Func::normalizeWebTopicName(undef, $formManagerWebTopic);
-        my $formTopic = $formManagerTopic;
-        $formTopic =~ s#Manager$##;
+        my ( undef, $formManagerTopic ) = Foswiki::Func::normalizeWebTopicName(undef, $formManagerWebTopic);
+        my ($web, $formTopic) = _getFormOf( $formManagerWebTopic );
 
         next if $web =~ m#^\Q$Foswiki::cfg{TrashWebName}\E(?:$|/|\.)#; # this _should_ not happen, but seems buggy at the moment
 
