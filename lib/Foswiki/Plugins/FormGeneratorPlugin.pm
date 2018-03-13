@@ -301,27 +301,26 @@ sub onChange {
 
     # Update db
 
-    my $db = db();
     if($oldTopic && $oldTopic =~ m#^FormGenerator_#) {
-        $db->do("DELETE from rules WHERE webtopic=?", {}, "$oldWeb.$oldTopic");
+        db()->do("DELETE from rules WHERE webtopic=?", {}, "$oldWeb.$oldTopic");
         if($newTopic =~ m#^FormGenerator_# && scalar grep{$_ eq $newWeb} @{$Foswiki::cfg{Extensions}{FormGeneratorPlugin}{FormGeneratorWebs}}) {
             my $formGroup = $newMeta->getPreference('FormGenerator_TargetFormGroup');
             my $sourceForm = $newMeta->getPreference('FormGenerator_SourceTopicForm');
-            $db->do("INSERT into rules (webtopic, TargetFormGroup, SourceTopicForm) values (?, ?, ?)", {}, "$newWeb.$newTopic", $formGroup, $sourceForm) if $formGroup;
+            db()->do("INSERT into rules (webtopic, TargetFormGroup, SourceTopicForm) values (?, ?, ?)", {}, "$newWeb.$newTopic", $formGroup, $sourceForm) if $formGroup;
         }
     } elsif($oldTopic && $oldTopic =~ m#FormManager$#) {
-        $db->do("DELETE from formmanagers WHERE webtopic=?", {}, "$oldWeb.$oldTopic");
+        db()->do("DELETE from formmanagers WHERE webtopic=?", {}, "$oldWeb.$oldTopic");
         if($newTopic =~ m#FormManager$# && $newWeb !~ m#^\Q$Foswiki::cfg{TrashWebName}\E(?:[./]|$)#) {
             my $formGroup = $newMeta->getPreference('FormGenerator_Group');
-            $db->do("INSERT into formmanagers (webtopic, FormGroup) values (?, ?)", {}, "$newWeb.$newTopic", $formGroup) if $formGroup;
+            db()->do("INSERT into formmanagers (webtopic, FormGroup) values (?, ?)", {}, "$newWeb.$newTopic", $formGroup) if $formGroup;
         }
     } elsif(not $oldTopic) {
         if($newWeb =~ m#^\Q$Foswiki::cfg{TrashWebName}\E(?:$|/|\.)#) {
             # web was moved to trash, delete from index
-            $db->do("DELETE from rules WHERE webtopic LIKE ?", {}, "$oldWeb.\%");
-            $db->do("DELETE from formmanagers WHERE webtopic LIKE ?", {}, "$oldWeb.\%");
+            db()->do("DELETE from rules WHERE webtopic LIKE ?", {}, "$oldWeb.\%");
+            db()->do("DELETE from formmanagers WHERE webtopic LIKE ?", {}, "$oldWeb.\%");
         } else {
-            $db->do("UPDATE formmanagers SET webtopic=? || substr(webtopic,?) WHERE webtopic LIKE ?", {}, "$newWeb.", length($oldWeb)+1, "$oldWeb.\%");
+            db()->do("UPDATE formmanagers SET webtopic=? || substr(webtopic,?) WHERE webtopic LIKE ?", {}, "$newWeb.", length($oldWeb)+1, "$oldWeb.\%");
         }
     }
 
