@@ -296,7 +296,7 @@ sub _tagMAYCREATEFORMGENERATORS {
 #    * newWeb: name of current web
 #    * newTopic: current topic name; may be undef (web-rename)
 #    * newMeta: current meta object; may only be undef if newTopic is undef
-sub _onChange {
+sub onChange {
     my ($oldWeb, $oldTopic, $newWeb, $newTopic, $newMeta) = @_;
 
     # Update db
@@ -485,7 +485,7 @@ sub afterRenameHandler {
         my $session = $Foswiki::Plugins::SESSION;
         my $inhibitedMeta = Foswiki::Meta->new($session, $newWeb, $inhibitedTopic);
         $meta->move($inhibitedMeta);
-        _onChange($web, $topic, $newWeb, $inhibitedTopic, $meta);
+        onChange($web, $topic, $newWeb, $inhibitedTopic, $meta);
 
         # Notify the user
         my $message = Foswiki::Func::expandCommonVariables('%MAKETEXT{"Editing form generators is restricted. The topic has been renamed."}%');
@@ -502,7 +502,7 @@ sub afterRenameHandler {
         );
     }
 
-    _onChange($web, $topic, $newWeb, $newTopic, $meta);
+    onChange($web, $topic, $newWeb, $newTopic, $meta);
 }
 
 # Will inhibit the save, if the user may not modify the generators.
@@ -529,7 +529,7 @@ sub beforeSaveHandler {
 sub afterSaveHandler {
     my ( $text, $topic, $web, undef, $newMeta ) = @_;
 
-    _onChange($web, $topic, $web, $topic, $newMeta);
+    onChange($web, $topic, $web, $topic, $newMeta);
 }
 
 # Get all managers indexed (ie outside Trash).
