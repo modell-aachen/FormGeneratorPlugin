@@ -20,6 +20,7 @@ our $SHORTDESCRIPTION = 'Automatically generate forms from multiple rules.';
 our $NO_PREFS_IN_TOPIC = 1;
 
 my $db;
+our $jobs = {};
 my %schema_versions;
 my @schema_updates = (
     [
@@ -295,9 +296,49 @@ sub _tagMAYCREATEFORMGENERATORS {
 #    * oldTopic: previous topic, may be identical to newTopic; may be undef (web-rename)
 #    * newWeb: name of current web
 #    * newTopic: current topic name; may be undef (web-rename)
-#    * newMeta: current meta object; may only be undef if newTopic is undef
+#    * newMeta: current meta object
 sub onChange {
     my ($oldWeb, $oldTopic, $newWeb, $newTopic, $newMeta) = @_;
+
+    $jobs->{$oldWeb}->{$oldTopic || ' '}->{$newWeb}->{$newTopic || ' '} = $newMeta || ' '; # Note: escaping undefs with ' ' to avoid "Odd number of elements..." issues
+}
+
+sub completePageHandler {
+    return unless scalar keys %$jobs;
+
+    my $groups = {};
+
+    # We need to reload the preferences, in case a new web has been created.
+    local $Foswiki::Plugins::SESSION->{prefs} = new Foswiki::Prefs($Foswiki::Plugins::SESSION);
+
+    foreach my $oldWeb (keys %$jobs) {
+        foreach my $oldTopic (keys %{$jobs->{$oldWeb}}) {
+            foreach my $newWeb (keys %{$jobs->{$oldWeb}->{$oldTopic}}) {
+                foreach my $newTopic (keys %{$jobs->{$oldWeb}->{$oldTopic}->{$newWeb}}) {
+                    _executeJob($oldWeb, $oldTopic, $newWeb, $newTopic, $jobs->{$oldWeb}->{$oldTopic}->{$newWeb}->{$newTopic}, $groups);
+                }
+            }
+        }
+    }
+
+    my @collectedGroups = keys %$groups;
+    _generate(\@collectedGroups) if scalar @collectedGroups;
+
+    $jobs = {};
+}
+
+sub _executeJob {
+    my ($oldWeb, $oldTopic, $newWeb, $newTopic, $newMeta, $groups) = @_;
+
+    # restore undefs
+    undef $oldWeb if $oldWeb eq ' ';
+    undef $oldTopic if $oldTopic eq ' ';
+    if((ref $newMeta && !$newMeta->getLoadedRev()) || ($newTopic && !ref $newMeta)) {
+        ($newMeta) = Foswiki::Func::readTopic($newWeb, $newTopic); # meta might have been finished
+        $newMeta = $newMeta->load();
+    } else {
+        undef $newMeta unless ref $newMeta;;
+    }
 
     # Update db
 
@@ -326,8 +367,6 @@ sub onChange {
 
     # Update forms
 
-    my %groups;
-
     if ((not $newTopic) || $newTopic eq 'WebPreferences' || $newTopic eq 'SitePreferences') { # Note: One may create MyWeb.SitePreferences, however not worth the effort
 
         # update everything
@@ -336,26 +375,26 @@ sub onChange {
         my @allGroups = @{ db()->selectcol_arrayref("SELECT DISTINCT TargetFormGroup from rules") };
         foreach my $group (@allGroups) {
             next unless $group;
-            $groups{$group} = 1;
+            $groups->{$group} = 1;
         }
 
     } elsif ($newTopic =~ /^FormGenerator_/) {
-        $groups{$newMeta->getPreference('FormGenerator_TargetFormGroup')} = 1;
+        $groups->{$newMeta->getPreference('FormGenerator_TargetFormGroup')} = 1;
     } elsif ($newTopic =~ /FormManager$/) {
-        $groups{$newMeta->getPreference('FormGenerator_Group')} = 1;
+        $groups->{$newMeta->getPreference('FormGenerator_Group')} = 1;
     } elsif ($oldTopic && $oldTopic =~ /^(.*Form)(?:Local)?ExtraFields\d+$/) {
         my $formManager = "$1Manager";
         if (Foswiki::Func::topicExists($oldWeb, $formManager)) {
             ($formManager) = Foswiki::Func::readTopic($oldWeb, $formManager);
             my $target = $formManager->getPreference('FormGenerator_Group');
-            $groups{$target} = 1 if $target;
+            $groups->{$target} = 1 if $target;
         }
     } elsif ($newTopic =~ /^(.*Form)(?:Local)?ExtraFields\d+$/) {
         my $formManager = "$1Manager";
         if (Foswiki::Func::topicExists($newWeb, $formManager)) {
             ($formManager) = Foswiki::Func::readTopic($newWeb, $formManager);
             my $target = $formManager->getPreference('FormGenerator_Group');
-            $groups{$target} = 1 if $target;
+            $groups->{$target} = 1 if $target;
         }
     } elsif ($newMeta) {
         my $newForm = $newMeta->getFormName();
@@ -364,14 +403,10 @@ sub onChange {
 
             my @grps = @{ db()->selectcol_arrayref("SELECT DISTINCT TargetFormGroup FROM rules WHERE SourceTopicForm=?",{}, $newForm) };
             foreach my $g (@grps) {
-                $groups{$g} = 1;
+                $groups->{$g} = 1;
             }
         }
     }
-
-    my @collectedGroups = keys %groups;
-    return unless scalar @collectedGroups;
-    _generate(\@collectedGroups);
 }
 
 sub db {
