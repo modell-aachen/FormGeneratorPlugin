@@ -3,6 +3,7 @@
 %TMPL:DEF{"content"}%%TEXT%
 
 %IF{"$MAYCREATEFORMGENERATORS" then="$percentTMPL:P{createbutton}$percent"}%
+<div class="foswikiHidden %GETVIRTUALWEB{"%WEB%.%TOPIC%Manager" default="" formatYes="isVirtualForm" formatNo="isNotVirtualForm"}%"><!-- virtual-topic marker for JS --></div>
 
 %IF{"istopic '%BASEWEB%.%BASETOPIC%Manager'" then="%MAKETEXT{"This form is managed by [_1]." args="[[%BASEWEB%.%BASETOPIC%Manager]]"}%"}%<!-- -->
 

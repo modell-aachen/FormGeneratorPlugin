@@ -84,7 +84,8 @@ jQuery(function($) {
 
     // helpers:
     var time = new Date().getTime();
-    var hrefAuto = foswiki.getScriptUrl('edit') + '/' + foswiki.getPreference('WEB') + '/' + foswiki.getPreference('TOPIC') + 'ExtraFieldsAUTOINC1?';
+    var isVirtual = $(".isVirtualForm").length;
+    var hrefAuto = foswiki.getScriptUrl('edit') + '/' + foswiki.getPreference('WEB') + '/' + foswiki.getPreference('TOPIC') + (isVirtual ? 'Local' : '') + 'ExtraFieldsAUTOINC1?';
     var webtopic = encodeURIComponent(foswiki.getPreference('WEB') + '.' + foswiki.getPreference('TOPIC'));
     var templatetopic = foswiki.getPreference('SYSTEMWEB') + '/FormGeneratorExtraFieldsTemplate'; // XXX not configurable
     var template = 'FormGeneratorExtraFieldsEdit';
