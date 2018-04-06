@@ -20,6 +20,7 @@ our $SHORTDESCRIPTION = 'Automatically generate forms from multiple rules.';
 our $NO_PREFS_IN_TOPIC = 1;
 
 my $db;
+our $jobs = {};
 my %schema_versions;
 my @schema_updates = (
     [
@@ -295,39 +296,76 @@ sub _tagMAYCREATEFORMGENERATORS {
 #    * oldTopic: previous topic, may be identical to newTopic; may be undef (web-rename)
 #    * newWeb: name of current web
 #    * newTopic: current topic name; may be undef (web-rename)
-#    * newMeta: current meta object; may only be undef if newTopic is undef
-sub _onChange {
+#    * newMeta: current meta object
+sub onChange {
     my ($oldWeb, $oldTopic, $newWeb, $newTopic, $newMeta) = @_;
+
+    $jobs->{$oldWeb}->{$oldTopic || ' '}->{$newWeb}->{$newTopic || ' '} = $newMeta || ' '; # Note: escaping undefs with ' ' to avoid "Odd number of elements..." issues
+}
+
+sub completePageHandler {
+    return unless scalar keys %$jobs;
+
+    my $groups = {};
+
+    # We need to reload the preferences, in case a new web has been created.
+    local $Foswiki::Plugins::SESSION->{prefs} = new Foswiki::Prefs($Foswiki::Plugins::SESSION);
+
+    foreach my $oldWeb (keys %$jobs) {
+        foreach my $oldTopic (keys %{$jobs->{$oldWeb}}) {
+            foreach my $newWeb (keys %{$jobs->{$oldWeb}->{$oldTopic}}) {
+                foreach my $newTopic (keys %{$jobs->{$oldWeb}->{$oldTopic}->{$newWeb}}) {
+                    _executeJob($oldWeb, $oldTopic, $newWeb, $newTopic, $jobs->{$oldWeb}->{$oldTopic}->{$newWeb}->{$newTopic}, $groups);
+                }
+            }
+        }
+    }
+
+    my @collectedGroups = keys %$groups;
+    _generate(\@collectedGroups) if scalar @collectedGroups;
+
+    $jobs = {};
+}
+
+sub _executeJob {
+    my ($oldWeb, $oldTopic, $newWeb, $newTopic, $newMeta, $groups) = @_;
+
+    # restore undefs
+    undef $oldWeb if $oldWeb eq ' ';
+    undef $oldTopic if $oldTopic eq ' ';
+    if((ref $newMeta && !$newMeta->getLoadedRev()) || ($newTopic && !ref $newMeta)) {
+        ($newMeta) = Foswiki::Func::readTopic($newWeb, $newTopic); # meta might have been finished
+        $newMeta = $newMeta->load();
+    } else {
+        undef $newMeta unless ref $newMeta;;
+    }
 
     # Update db
 
-    my $db = db();
     if($oldTopic && $oldTopic =~ m#^FormGenerator_#) {
-        $db->do("DELETE from rules WHERE webtopic=?", {}, "$oldWeb.$oldTopic");
+        db()->do("DELETE from rules WHERE webtopic=?", {}, "$oldWeb.$oldTopic");
         if($newTopic =~ m#^FormGenerator_# && scalar grep{$_ eq $newWeb} @{$Foswiki::cfg{Extensions}{FormGeneratorPlugin}{FormGeneratorWebs}}) {
             my $formGroup = $newMeta->getPreference('FormGenerator_TargetFormGroup');
             my $sourceForm = $newMeta->getPreference('FormGenerator_SourceTopicForm');
-            $db->do("INSERT into rules (webtopic, TargetFormGroup, SourceTopicForm) values (?, ?, ?)", {}, "$newWeb.$newTopic", $formGroup, $sourceForm) if $formGroup;
+            db()->do("INSERT into rules (webtopic, TargetFormGroup, SourceTopicForm) values (?, ?, ?)", {}, "$newWeb.$newTopic", $formGroup, $sourceForm) if $formGroup;
         }
     } elsif($oldTopic && $oldTopic =~ m#FormManager$#) {
-        $db->do("DELETE from formmanagers WHERE webtopic=?", {}, "$oldWeb.$oldTopic");
+        db()->do("DELETE from formmanagers WHERE webtopic=?", {}, "$oldWeb.$oldTopic");
         if($newTopic =~ m#FormManager$# && $newWeb !~ m#^\Q$Foswiki::cfg{TrashWebName}\E(?:[./]|$)#) {
             my $formGroup = $newMeta->getPreference('FormGenerator_Group');
-            $db->do("INSERT into formmanagers (webtopic, FormGroup) values (?, ?)", {}, "$newWeb.$newTopic", $formGroup) if $formGroup;
+            db()->do("INSERT into formmanagers (webtopic, FormGroup) values (?, ?)", {}, "$newWeb.$newTopic", $formGroup) if $formGroup;
         }
     } elsif(not $oldTopic) {
         if($newWeb =~ m#^\Q$Foswiki::cfg{TrashWebName}\E(?:$|/|\.)#) {
             # web was moved to trash, delete from index
-            $db->do("DELETE from rules WHERE webtopic LIKE ?", {}, "$oldWeb.\%");
-            $db->do("DELETE from formmanagers WHERE webtopic LIKE ?", {}, "$oldWeb.\%");
+            db()->do("DELETE from rules WHERE webtopic LIKE ?", {}, "$oldWeb.\%");
+            db()->do("DELETE from formmanagers WHERE webtopic LIKE ?", {}, "$oldWeb.\%");
         } else {
-            $db->do("UPDATE formmanagers SET webtopic=? || substr(webtopic,?) WHERE webtopic LIKE ?", {}, "$newWeb.", length($oldWeb)+1, "$oldWeb.\%");
+            db()->do("UPDATE formmanagers SET webtopic=? || substr(webtopic,?) WHERE webtopic LIKE ?", {}, "$newWeb.", length($oldWeb)+1, "$oldWeb.\%");
         }
     }
 
     # Update forms
-
-    my %groups;
 
     if ((not $newTopic) || $newTopic eq 'WebPreferences' || $newTopic eq 'SitePreferences') { # Note: One may create MyWeb.SitePreferences, however not worth the effort
 
@@ -337,26 +375,26 @@ sub _onChange {
         my @allGroups = @{ db()->selectcol_arrayref("SELECT DISTINCT TargetFormGroup from rules") };
         foreach my $group (@allGroups) {
             next unless $group;
-            $groups{$group} = 1;
+            $groups->{$group} = 1;
         }
 
     } elsif ($newTopic =~ /^FormGenerator_/) {
-        $groups{$newMeta->getPreference('FormGenerator_TargetFormGroup')} = 1;
+        $groups->{$newMeta->getPreference('FormGenerator_TargetFormGroup')} = 1;
     } elsif ($newTopic =~ /FormManager$/) {
-        $groups{$newMeta->getPreference('FormGenerator_Group')} = 1;
+        $groups->{$newMeta->getPreference('FormGenerator_Group')} = 1;
     } elsif ($oldTopic && $oldTopic =~ /^(.*Form)(?:Local)?ExtraFields\d+$/) {
         my $formManager = "$1Manager";
         if (Foswiki::Func::topicExists($oldWeb, $formManager)) {
             ($formManager) = Foswiki::Func::readTopic($oldWeb, $formManager);
             my $target = $formManager->getPreference('FormGenerator_Group');
-            $groups{$target} = 1 if $target;
+            $groups->{$target} = 1 if $target;
         }
     } elsif ($newTopic =~ /^(.*Form)(?:Local)?ExtraFields\d+$/) {
         my $formManager = "$1Manager";
         if (Foswiki::Func::topicExists($newWeb, $formManager)) {
             ($formManager) = Foswiki::Func::readTopic($newWeb, $formManager);
             my $target = $formManager->getPreference('FormGenerator_Group');
-            $groups{$target} = 1 if $target;
+            $groups->{$target} = 1 if $target;
         }
     } elsif ($newMeta) {
         my $newForm = $newMeta->getFormName();
@@ -365,14 +403,10 @@ sub _onChange {
 
             my @grps = @{ db()->selectcol_arrayref("SELECT DISTINCT TargetFormGroup FROM rules WHERE SourceTopicForm=?",{}, $newForm) };
             foreach my $g (@grps) {
-                $groups{$g} = 1;
+                $groups->{$g} = 1;
             }
         }
     }
-
-    my @collectedGroups = keys %groups;
-    return unless scalar @collectedGroups;
-    _generate(\@collectedGroups);
 }
 
 sub db {
@@ -485,7 +519,7 @@ sub afterRenameHandler {
         my $session = $Foswiki::Plugins::SESSION;
         my $inhibitedMeta = Foswiki::Meta->new($session, $newWeb, $inhibitedTopic);
         $meta->move($inhibitedMeta);
-        _onChange($web, $topic, $newWeb, $inhibitedTopic, $meta);
+        onChange($web, $topic, $newWeb, $inhibitedTopic, $meta);
 
         # Notify the user
         my $message = Foswiki::Func::expandCommonVariables('%MAKETEXT{"Editing form generators is restricted. The topic has been renamed."}%');
@@ -502,7 +536,7 @@ sub afterRenameHandler {
         );
     }
 
-    _onChange($web, $topic, $newWeb, $newTopic, $meta);
+    onChange($web, $topic, $newWeb, $newTopic, $meta);
 }
 
 # Will inhibit the save, if the user may not modify the generators.
@@ -529,7 +563,7 @@ sub beforeSaveHandler {
 sub afterSaveHandler {
     my ( $text, $topic, $web, undef, $newMeta ) = @_;
 
-    _onChange($web, $topic, $web, $topic, $newMeta);
+    onChange($web, $topic, $web, $topic, $newMeta);
 }
 
 # Get all managers indexed (ie outside Trash).
@@ -569,6 +603,32 @@ sub _getRulesByGroup {
     return @{ db()->selectcol_arrayref("SELECT DISTINCT webtopic FROM rules WHERE TargetFormGroup=?", {}, $group) };
 }
 
+sub getExtraFieldsFrom {
+    my ( $group ) = @_;
+    my $formManagers = _getManagersByGroup( [ $group ] );
+    my @extraFields;
+    foreach my $formManagerWebTopic ( @$formManagers ) {
+        push @extraFields, _getExtraFieldTopics( _getFormOf( $formManagerWebTopic ) );
+    }
+    return @extraFields;
+}
+
+sub _getFormOf {
+    my ( $formManagerWebTopic ) = @_;
+    my ( $web, $formTopic ) = Foswiki::Func::normalizeWebTopicName(undef, $formManagerWebTopic);
+    $formTopic =~ s#Manager$##;
+    return ( $web, $formTopic );
+}
+
+sub getTableData {
+    my ( $web, $topic ) = @_;
+    my ( $meta, $content ) = Foswiki::Func::readTopic( $web, $topic );
+    my ( $columns, $fields, $prefs ) = _parseFormDefinition( $content );
+
+    return ( $columns, $fields, $prefs );
+}
+
+
 # Generates (and saves) all forms affected by the groups.
 # The forms are only saved, if they actually changed.
 #
@@ -584,7 +644,6 @@ sub _generate {
 
     my %groupdata;
 
-    my $affectedForms = _getManagersByGroup($groups);
 
     my $errors = '';
 
@@ -605,11 +664,11 @@ sub _generate {
     }
 
     # build the actual form
+    my $affectedForms = _getManagersByGroup($groups);
 
     foreach my $formManagerWebTopic ( @$affectedForms ) {
-        my ($web, $formManagerTopic) = Foswiki::Func::normalizeWebTopicName(undef, $formManagerWebTopic);
-        my $formTopic = $formManagerTopic;
-        $formTopic =~ s#Manager$##;
+        my ( undef, $formManagerTopic ) = Foswiki::Func::normalizeWebTopicName(undef, $formManagerWebTopic);
+        my ($web, $formTopic) = _getFormOf( $formManagerWebTopic );
 
         next if $web =~ m#^\Q$Foswiki::cfg{TrashWebName}\E(?:$|/|\.)#; # this _should_ not happen, but seems buggy at the moment
 
