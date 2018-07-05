@@ -300,7 +300,14 @@ sub _tagMAYCREATEFORMGENERATORS {
 sub onChange {
     my ($oldWeb, $oldTopic, $newWeb, $newTopic, $newMeta) = @_;
 
-    $jobs->{$oldWeb}->{$oldTopic || ' '}->{$newWeb}->{$newTopic || ' '} = $newMeta || ' '; # Note: escaping undefs with ' ' to avoid "Odd number of elements..." issues
+    if(Foswiki::Func::getContext()->{'save'}) {
+        my $groups = {};
+        _executeJob($oldWeb, $oldTopic || '', $newWeb, $newTopic || '', $newMeta, $groups);
+        my @collectedGroups = keys %$groups;
+        _generate(\@collectedGroups) if scalar @collectedGroups;
+    } else {
+        $jobs->{$oldWeb}->{$oldTopic || ' '}->{$newWeb}->{$newTopic || ' '} = $newMeta || ' '; # Note: escaping undefs with ' ' to avoid "Odd number of elements..." issues
+    }
 }
 
 sub completePageHandler {
