@@ -2,9 +2,9 @@
 %TMPL:INCLUDE{"FormGeneratorExtraFieldsBase"}%
 
 %TMPL:DEF{"FormGeneratorPreferences"}%<table><tbody>
-<tr><td>%MAKETEXT{"Priority"}%</td><td><input type="text" name="Priority" value="%URLPARAM{"Priority" default="%FormGenerator_Priority{default=""}%"}%" /></td></tr>
-<tr><td>%MAKETEXT{"Order"}%</td><td><input type="text" name="Order" value="%URLPARAM{"Order" default="%FormGenerator_Order{default=""}%"}%" /></td></tr>
-<tr><td>%MAKETEXT{"Disabled"}%</td><td><input type="checkbox" name="Disabled" value="1" %IF{"%URLPARAM{"Disabled" default="%FormGenerator_Disabled{default="0"}%"}%" then="checked=\"checked\""}% /></td></tr>
+<tr><td>%MAKETEXT{"Priority"}%</td><td><input type="text" name="Set+FormGenerator_Priority" value="%URLPARAM{"Priority" default="%FormGenerator_Priority{default=""}%"}%" /></td></tr>
+<tr><td>%MAKETEXT{"Order"}%</td><td><input type="text" name="Set+FormGenerator_Order" value="%URLPARAM{"Order" default="%FormGenerator_Order{default=""}%"}%" /></td></tr>
+<tr><td>%MAKETEXT{"Disabled"}%</td><td><input type="checkbox" name="Set+FormGenerator_Disabled" value="1" %IF{"%URLPARAM{"Disabled" default="%FormGenerator_Disabled{default="0"}%"}%" then="checked=\"checked\""}% /></td></tr>
 </tbody></table>%TMPL:END%
 
 %TMPL:DEF{"textarea"}%%TMPL:P{"originalForm"}%%TMPL:P{"FormGeneratorPreferences"}%%TMPL:PREV%%TMPL:END%
