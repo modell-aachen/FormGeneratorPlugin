@@ -846,8 +846,8 @@ sub _generate {
         # note: only put sorted arrays or strings into to_json, never objects
         # (because we do not want to re-generate the form if nothing changed)
         my @textParts = ();
-        push @textParts, ('<span style="color:red;">%MAKETEXT{"This form has been created by FormGeneratorPlugin, <b>do not modify</b>!"}%</span>'."\n\n", $formText);
-        push @textParts, ("\n\n<div style=\"color:red;\"><b>ERRORS:</b>\n\n", $errors, "</div>") if $errors;
+        push @textParts, ('<span class="foswikiRedFG">%MAKETEXT{"This form has been created by FormGeneratorPlugin, <b>do not modify</b>!"}%</span>'."\n\n", $formText);
+        push @textParts, ("\n\n<div class=\"foswikiRedFG\"><b>ERRORS:</b>\n\n", $errors, "</div>") if $errors;
         push @textParts, ("\n<div class='foswikiHidden rulesHeadersJson'><verbatim>", to_json($jsonFieldsHeaders), "</verbatim></div>\n");
         push @textParts, ("\n<div class='foswikiHidden rulesJson'><verbatim>", to_json($jsonFields), "</verbatim></div>\n");
         push @textParts, ("\n<div class='foswikiHidden rulesRemovedJson'><verbatim>", to_json($jsonFieldsRemoved), "</verbatim></div>\n");
